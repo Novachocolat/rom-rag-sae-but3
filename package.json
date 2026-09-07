@@ -1,0 +1,46 @@
+{
+  "name": "rom-rag-sae-but3",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "ts:check": "tsc -b --pretty",
+    "ts:check:clean": "tsc -b --clean && tsc -b --pretty",
+    "build": "npm run build --workspaces --if-present",
+    "build:shared": "npm run build -w @repo/shared",
+    "test": "npm run test --workspaces --if-present",
+    "dev": "npm run build:shared && concurrently -k -n shared,backend,frontend -c blue,green,magenta \"npm:dev:shared\" \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:shared": "npm run dev -w @repo/shared",
+    "dev:backend": "npm run dev -w @repo/backend",
+    "dev:frontend": "npm run dev -w @repo/frontend",
+    "db:generate": "npm run db:generate -w @repo/backend",
+    "db:migrate": "npm run db:migrate -w @repo/backend",
+    "db:studio": "npm run db:studio -w @repo/backend",
+    "docker:dev": "docker compose up --build",
+    "docker:dev:down": "docker compose down",
+    "docker:prod": "docker compose -f compose.prod.yaml up --build -d",
+    "docker:prod:down": "docker compose -f compose.prod.yaml down"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,cjs,mjs}": [
+      "oxlint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md,yml,yaml,html}": [
+      "prettier --write"
+    ]
+  }
+}

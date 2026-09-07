@@ -1,0 +1,13 @@
+FROM node:24-alpine
+WORKDIR /app
+ENV CI=true
+
+COPY package.json package-lock.json ./
+COPY shared/package.json shared/
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
+
+RUN npm ci --ignore-scripts
+
+COPY . .
+RUN npm run build -w @repo/shared && npx prisma generate --schema backend/prisma/schema.prisma

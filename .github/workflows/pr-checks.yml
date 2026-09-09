@@ -1,0 +1,57 @@
+name: PR checks
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  tests-and-comments:
+    name: Tests & comments check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check tests & comments on changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/check-tests-and-comments.mjs
+
+  docker-tests:
+    name: Run tests in Docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build dev image
+        run: docker build -f Dockerfile.dev -t rom-rag-sae-but3-test .
+
+      - name: Run test suites
+        run: docker run --rm rom-rag-sae-but3-test npm run test --workspaces --if-present -- --passWithNoTests
+
+  assign-reviewer:
+    name: Assign default reviewer
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened' && github.actor != 'Novachocolat'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request review from Novachocolat
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              reviewers: ["Novachocolat"],
+            });

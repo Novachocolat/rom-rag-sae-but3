@@ -9,7 +9,7 @@
 ## Checklist
 
 - [ ] Code and comments are in English
-- [ ] New files have associated tests
-- [ ] Modified files have their tests updated
+- [ ] New or modified files under `backend/src/` have co-located tests
 - [ ] Added/modified code is commented
-- [ ] `npm run lint` / `npm run ts:check` pass locally
+- [ ] `npm run format`, `npm run lint`, `npm run ts:check` and `npm test` pass
+      locally

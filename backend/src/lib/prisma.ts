@@ -1,6 +1,9 @@
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client.js";
+import { PrismaPg } from '@prisma/adapter-pg'
+import { env } from '../env.js'
+import { PrismaClient } from '../generated/prisma/client.js'
 
-// Initializes the Prisma Client with the PostgreSQL adapter, using the connection string (DATABASE_URL) from .env
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
-export const prisma = new PrismaClient({ adapter }) // Exports the Prisma Client instance for database operations
+// Creates a new PrismaPg adapter instance with the connection string from environment variables
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL })
+
+// Prisma client as a singleton to avoid exhausting database connections in development
+export const prisma = new PrismaClient({ adapter })

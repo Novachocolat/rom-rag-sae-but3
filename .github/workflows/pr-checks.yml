@@ -4,7 +4,51 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
 
+# A new push supersedes the checks still running for the same PR
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
+  quality:
+    name: Format, lint, types & tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      # backend/src/generated is gitignored but `tsc -b` compiles it, so the
+      # client has to exist before the type check. prisma.config.ts reads
+      # DATABASE_URL to build its datasource block and there is no .env in CI,
+      # hence the dummy value: `generate` never opens a connection.
+      - name: Generate the Prisma client
+        run: npm run db:generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app?schema=public
+
+      # tsc -b walks the project references, so this also builds shared/dist.
+      - name: Type check
+        run: npm run ts:check
+
+      # The suites mock Prisma and Redis, so no service containers are needed.
+      - name: Test
+        run: npm test
+
   tests-and-comments:
     name: Tests & comments check
     runs-on: ubuntu-latest
@@ -17,7 +61,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Check tests & comments on changed files
         env:
@@ -25,18 +69,18 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node .github/scripts/check-tests-and-comments.mjs
 
-  docker-tests:
-    name: Run tests in Docker
+  docker-build:
+    name: Build dev image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build dev image
-        run: docker build -f Dockerfile.dev -t rom-rag-sae-but3-test .
+      - name: Validate the compose file
+        run: docker compose config --quiet
 
-      - name: Run test suites
-        run: docker run --rm rom-rag-sae-but3-test npm run test --workspaces --if-present -- --passWithNoTests
+      - name: Build dev image
+        run: docker build -f Dockerfile.dev -t rom-rag-sae-but3-dev:ci .
 
   assign-reviewer:
     name: Assign default reviewer

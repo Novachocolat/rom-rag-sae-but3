@@ -1,4 +1,7 @@
+# Single development image, shared by all services
+# Production images live in backend/Dockerfile and frontend/Dockerfile
 FROM node:24-alpine
+
 WORKDIR /app
 ENV CI=true
 
@@ -9,5 +12,13 @@ COPY frontend/package.json frontend/
 
 RUN npm ci --ignore-scripts
 
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+
 COPY . .
-RUN npm run build -w @repo/shared && npx prisma generate --schema backend/prisma/schema.prisma
+
+RUN npm run build -w @repo/shared \
+ && npm run db:generate -w @repo/backend
+
+EXPOSE 3000 5173
+
+CMD ["npm", "run", "dev", "-w", "@repo/backend"]

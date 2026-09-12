@@ -1,140 +1,190 @@
-# ROM RAG
+# 🕹️ ROM RAG (Retrieval-Augmented Generation)
 
-## About
+A **video game ROM (Read-Only Memory) library manager 🕹️**: it searches through
+a local directory, identifies ROM files (`.gb/.gbc./gba`, `.nes`, `.n64/.z64`,
+`.nds/.3ds`, `.iso`, `bin`, etc.) against
+**[No-Intro Datomatic](https://datomatic.no-intro.org/index.php?page=download&s=64)**
+databases, and enriches **unidentified ROMs** and **groups a game's variants**
+together using **local AI pre-trained models (from Ollama)**.
 
-[Décrire en 2-3 phrases le problème métier résolu par ROM RAG : contexte SAE
-BUT3, cas d'usage du système RAG (Retrieval-Augmented Generation), et pourquoi
-ce projet existe. À compléter par l'équipe.]
+> **See [docs/CHANGELOG.md](./docs/CHANGELOG.md) to be up-to-date.**
 
-## Table des matières
+## Table of contents
 
-- 🪧 [À propos](#à-propos)
-- 📦 [Prérequis](#prérequis)
-- 🚀 [Installation](#installation)
-- 🛠️ [Utilisation](#utilisation)
-- 🤝 [Contribution](#contribution)
-- 🏗️ [Construit avec](#construit-avec)
-- 📚 [Documentation](#documentation)
-- 🏷️ [Gestion des versions](#gestion-des-versions)
-- 📝 [Licence](#licence)
+- [Team](#team)
+- [Stack](#stack)
+- [Getting started](#getting-started)
+- [Scripts](#scripts)
+- [Repository structure](#repository-structure)
+- [Dataset](#dataset)
+- [Quality and CI](#quality-and-ci)
+- [Documentation](#documentation)
+- [Versioning](#versioning)
 
-## Prérequis
+## Team
 
-- [Node.js](https://nodejs.org/) >= 22 (utilise les npm workspaces)
-- [npm](https://docs.npmjs.com/cli/) >= 11
-- [Docker](https://docs.docker.com/get-docker/) et
-  [Docker Compose](https://docs.docker.com/compose/) (v2, intégré à Docker
-  Desktop)
-- [Git](https://git-scm.com/)
+| Member                      | GitHub                                           | Main role                                                                                                                                                                                          |
+| --------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **David MELOCCO**           | [@ThFoxY](https://github.com/ThFoxY)             | ![Leader](https://img.shields.io/badge/role-leader-ffffff) ![Frontend](https://img.shields.io/badge/role-frontend-3b82f6) ![Docs%2FCI](https://img.shields.io/badge/role-docs/CI-d6172b)           |
+| **Neda Khelifi**            | [@Novachocolat](https://github.com/Novachocolat) | ![Backend](https://img.shields.io/badge/role-backend-16a34a) ![Data%2FInfra](https://img.shields.io/badge/role-data%2Finfra-f59e0b) ![Docs%2FCI](https://img.shields.io/badge/role-docs/CI-d6172b) |
+| **Lysandre PACE--BOULNOIS** | [@Novachocolat](https://github.com/Novachocolat) | ![Backend](https://img.shields.io/badge/role-backend-16a34a) ![AI](https://img.shields.io/badge/role-AI-8b5cf6) ![Docs%2FCI](https://img.shields.io/badge/role-docs/CI-d6172b)                     |
+|                             |
 
-## Installation
+### RACI matrix
+
+**R** = Responsible (does the work)
+
+**A** = Accountable (final owner, exactly one per row)
+
+**C** = Consulted
+
+**I** = Informed
+
+| Activity                             | David | Neda | Lysandre |
+| ------------------------------------ | ----- | ---- | -------- |
+| **Overall architecture & ADRs**      | A     | C    | C        |
+| **React UI & design system**         | A/R   | I    | I        |
+| **Client state & API integration**   | A/R   | C    | I        |
+| **Express REST API**                 | C     | A/R  | R        |
+| **Ollama adapter & prompts**         | I     | C    | A/R      |
+| **DAT file parsing**                 | I     | A/R  | C        |
+| **Directory scan & hashing**         | I     | A/R  | C        |
+| **PostgreSQL/pgvector schema**       | R     | A/R  | C        |
+| **Redis cache & job queue**          | A/R   | C    | R        |
+| **Unit tests**                       | R     | R    | R        |
+| **Integration/Bruno tests**          | A/R   | R    | R        |
+| **Docker & Compose**                 | C     | I    | A/R      |
+| **GitHub Actions**                   | C     | C    | A/R      |
+| **Documentation & CHANGELOG**        | A/R   | R    | R        |
+| **Notion backlog & sprint tracking** | A/R   | C    | C        |
+
+## Stack
+
+| Layer         | Technologies                                                                       |
+| ------------- | ---------------------------------------------------------------------------------- |
+| **Frontend**  | React 19, TanStack Query, Redux Toolkit, TailwindCSS 4, shadcn/ui                  |
+| **Backend**   | Node.js, Express 5, Zod, Helmet, CORS                                              |
+| **Databases** | PostgreSQL 17 + pgvector, Redis 8 (ioredis), Prisma 7                              |
+| **AI models** | Ollama with a local LLM (`gemma4:12b/26b`) and a embedding model (`embeddinggema`) |
+| **Quality**   | TypeScript strict, Oxlint, Prettier, Vitest, Husky, commitlint                     |
+| **Tooling**   | npm workspaces, Docker / Docker Compose, GitHub Actions                            |
+
+## Getting started
+
+**Prerequisites:** [Node.js](https://nodejs.org/) >= 22,
+[Docker](https://docs.docker.com/get-docker/) with
+[Compose v2](https://docs.docker.com/compose/), and [Git](https://git-scm.com/).
 
 ```bash
 git clone https://github.com/Novachocolat/rom-rag-sae-but3.git
 cd rom-rag-sae-but3
 
-cp .env.example .env    # renseigner les valeurs locales (DB, Redis, ports…)
-
-npm install              # installe les 3 workspaces (shared, backend, frontend)
-npm run build:shared     # compile shared/ (requis avant de lancer backend/frontend)
-npm run db:generate       # génère le client Prisma
+cp .env.example .env  # Fill in local values (DB, Redis, ports...)
+npm ci                # Installs the 3 workspaces (shared, backend, frontend)
 ```
 
-## Utilisation
+### With Docker
 
-### En local (sans Docker)
+No local install of **PostgreSQL**, **Redis**, or even `npm install` is required
+beyond the `npm ci` above.
 
 ```bash
-npm run dev             # lance shared (watch), backend et frontend en parallèle
-npm run db:migrate       # applique les migrations Prisma (nécessite Postgres démarré)
-npm run db:studio        # ouvre Prisma Studio
+npm run docker:dev        # full stack (Postgres, Redis, backend, frontend), dev mode
+npm run docker:dev:down   # stop the stack
+npm run docker:dev:reset  # wipe volumes then restart (see note below)
 ```
 
-### Avec Docker
+**Once started:** frontend on <http://localhost:5173>, backend on
+<http://localhost:3000>, health check on <http://localhost:3000/api/health>.
 
-```bash
-npm run docker:dev       # stack complète (Postgres, Redis, backend, frontend) en mode dev
-npm run docker:prod      # build + démarrage des images de production (Nginx, backend)
+An `init` service runs once before `backend` and `frontend`: it builds
+`shared/dist`, generates the Prisma client, and applies migrations. All three
+Node services share the same image (`Dockerfile.dev`).
+
+The production stack (`docker-compose.prod.yml`) targets a local, Docker-only
+assessment setup. There is no **Nginx/reverse-proxy layer**, since this project
+is never hosted publicly (see
+[CONVENTIONS.md](./CONVENTIONS.md#infrastructure)).
+
+## Scripts
+
+| Command                                   | Effect                                                |
+| ----------------------------------------- | ----------------------------------------------------- |
+| `npm run dev`                             | Runs `shared`, `backend`, and `frontend` in parallel. |
+| `npm run build`                           | Builds all three workspaces.                          |
+| `npm run build:shared`                    | Builds `shared/` only.                                |
+| `npm test`                                | Runs Vitest across all workspaces.                    |
+| `npm run lint` / `lint:fix`               | Oxlint, with or without autofix.                      |
+| `npm run format` / `format:check`         | Prettier, write or check-only.                        |
+| `npm run ts:check`                        | Type-checks the three `tsconfig` projects.            |
+| `npm run db:generate`                     | Generates the Prisma client.                          |
+| `npm run db:migrate`                      | Applies Prisma migrations (dev).                      |
+| `npm run db:studio`                       | Opens Prisma Studio.                                  |
+| `npm run docker:dev` / `:down` / `:reset` | Starts/stops/resets the dev stack.                    |
+| `npm run docker:prod` / `:down`           | Starts/stops the production-like stack.               |
+
+## Repository structure
+
+```
+shared/                   Zod schemas and types shared by frontend/backend
+  src/schemas/              Validated data shapes (env, health, user...)
+  src/types/                Plain shared TypeScript types
+backend/
+  src/
+    client/                 Ollama adapters (LLM, embedding)
+    service/                Pure business logic
+    storage/                Prisma, pgvector queries, Redis
+    routes/                 Express route handlers
+    lib/                    Wrappers around external clients (Prisma, Redis...)
+frontend/
+  src/
+    components/ui/          shadcn-generated components (regenerated, not hand-edited)
+docs/
+  adr/                      Architecture Decision Records
+  monitoring/               Sprint tracking notes (superseded by Notion)
+dataset/
+  dat/                      No-Intro .dat catalogs (versioned)
+  roms/                     (legally) acquired ROMs for testing directory scans
+prompts/                    Versioned prompts consumed by the backend
 ```
 
-### Qualité de code
+## Dataset
 
-```bash
-npm run format           # formate le code avec Prettier
-npm run lint              # vérifie le code avec oxlint
-npm run lint:fix           # corrige automatiquement ce qui peut l'être
-npm run ts:check           # vérifie les types TypeScript sur les 3 workspaces
-npm test                  # lance les tests (Vitest) sur les 3 workspaces
-```
+`dataset/dat/` holds real **No-Intro `.dat` catalogs (Logiqx XML)** used to
+identify ROMs by **name/MD5/SHA-1**.
 
-## Contribution
+`dataset/roms/` holds **real ROMs** for exercising the directory scanner.
 
-Voir [CONTRIBUTING.md](./CONTRIBUTING.md) pour le détail du flux de contribution
-(branches, commits, pull requests) et [CONVENTIONS.md](./CONVENTIONS.md) pour
-les conventions de code.
+## Quality and CI
 
-En résumé :
+Every change goes through a **Pull Request** into `dev`, approved by a
+**codeowner**. [GitHub Actions](https://github.com/features/actions)
+(`.github/workflows/pr-checks.yml`) runs on every pull request:
 
-- Les commits suivent la spécification
-  [Conventional Commits](https://www.conventionalcommits.org/) (vérifié
-  automatiquement par commitlint via un hook Husky).
-- Toute modification passe par une pull request vers `dev`, avec au moins une
-  revue approuvée avant fusion (règle appliquée par GitHub).
+- **quality** — `format:check`, `lint`, `db:generate`, `ts:check`, then `test`.
+- **tests & comments** — checks that any backend file added/modified under
+  `backend/src/` has a co-located test and is commented.
+- **docker build** — validates `docker-compose.yml` and builds `Dockerfile.dev`.
+- **assign reviewer** — automatically requests a review.
 
-## Construit avec
-
-### Langages & Frameworks
-
-- [TypeScript](https://www.typescriptlang.org/) — langage utilisé sur l'ensemble
-  du monorepo (frontend, backend, shared)
-- [React](https://react.dev/) — bibliothèque UI du frontend
-- [Express](https://expressjs.com/) — framework HTTP du backend
-- [Prisma](https://www.prisma.io/) + [PostgreSQL](https://www.postgresql.org/) —
-  ORM et base de données relationnelle
-- [Redis](https://redis.io/) (via [ioredis](https://github.com/redis/ioredis)) —
-  cache / stockage clé-valeur
-- [Zod](https://zod.dev/) — schémas de validation partagés entre frontend et
-  backend (`shared/`)
-- [TailwindCSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
-  — design system du frontend
-- [Redux Toolkit](https://redux-toolkit.js.org/) — état global côté frontend
-- [TanStack Query](https://tanstack.com/query) — gestion des requêtes serveur
-  côté frontend
-
-### Outils
-
-#### CI
-
-[À configurer — GitHub Actions n'est pas encore en place. Prévu : un workflow
-exécutant `format:check`, `lint`, `ts:check` et `test` sur chaque pull request.]
-
-#### Déploiement
-
-- [Docker](https://www.docker.com/) /
-  [Docker Compose](https://docs.docker.com/compose/) — conteneurisation des
-  services (backend, frontend, Postgres, Redis)
-- [Nginx](https://nginx.org/) — sert le build statique du frontend et fait
-  office de reverse proxy vers le backend en production
+_Tests need neither PostgreSQL nor Redis: both are mocked._
 
 ## Documentation
 
-- [docs/adr/](./docs/adr/) — Architecture Decision Records (choix techniques
-  structurants et leur justification)
+| Document                                       | Content                                                                     |
+| ---------------------------------------------- | --------------------------------------------------------------------------- |
+| [CONTRIBUTING.md](./CONTRIBUTING.md)           | Git workflow, issue lifecycle, commits, migrations, secrets, pull requests. |
+| [CONVENTIONS.md](./CONVENTIONS.md)             | Code/naming conventions                                                     |
+| [docs/CHANGELOG.md](./docs/CHANGELOG.md)       | Version history.                                                            |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layers and data flow.                                                       |
+| [docs/DATA_MODEL.md](./docs/DATA_MODEL.md)     | Relational and vector schema.                                               |
+| [docs/AI.md](./docs/AI.md)                     | Models, prompts, output schemas, robustness.                                |
+| [docs/SECURITY.md](./docs/SECURITY.md)         | Security and data-integrity measures.                                       |
+| [docs/adr/](./docs/adr/)                       | Architecture Decision Records.                                              |
 
-## Gestion des versions
+> **All documentation was supervised and reviewed by Claude to ensure team's
+> productivity and comprehension.**
 
-Afin de maintenir un cycle de publication claire et de favoriser la
-rétrocompatibilité, la dénomination des versions suit la spécification décrite
-par la [Gestion sémantique de version](https://semver.org/lang/fr/)
+## Versioning
 
-Les versions disponibles ainsi que les journaux décrivant les changements
-apportés sont disponibles depuis
-[la page des Releases](https://github.com/Novachocolat/rom-rag-sae-but3/releases).
-
-## Licence
-
-[Aucune licence n'a encore été choisie — le fichier `LICENSE.md` référencé
-ci-dessous n'existe pas encore. À décider avec l'équipe/l'encadrement (projet
-académique : souvent "All rights reserved" ou une licence permissive type MIT).]
-
-Voir le fichier [LICENSE](./LICENSE.md) du dépôt.
+**See [docs/CHANGELOG.md](./docs/CHANGELOG.md) to be up-to-date.**

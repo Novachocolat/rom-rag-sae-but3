@@ -1,14 +1,2 @@
-node_modules
-**/node_modules
-dist
-**/dist
-.git
-.github
-.husky
-coverage
-*.log
-.env
-.env.*
-!.env.example
-**/*.tsbuildinfo
-backend/src/generated
+node_modules **/node_modules dist **/dist .git .github .husky coverage _.log
+.env .env._ !.env.example **/*.tsbuildinfo backend/src/generated dataset

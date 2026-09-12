@@ -32,20 +32,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # backend/src/generated is gitignored but `tsc -b` compiles it, so the
-      # client has to exist before the type check. prisma.config.ts reads
-      # DATABASE_URL to build its datasource block and there is no .env in CI,
-      # hence the dummy value: `generate` never opens a connection.
       - name: Generate the Prisma client
         run: npm run db:generate
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app?schema=public
 
-      # tsc -b walks the project references, so this also builds shared/dist.
       - name: Type check
         run: npm run ts:check
 
-      # The suites mock Prisma and Redis, so no service containers are needed.
       - name: Test
         run: npm test
 

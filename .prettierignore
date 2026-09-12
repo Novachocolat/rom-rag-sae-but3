@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+coverage
+.husky/_
+package-lock.json
+*.min.*
+backend/src/generated
+frontend/public
+frontend/src/assets

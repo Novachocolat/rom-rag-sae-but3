@@ -1,0 +1,61 @@
+{
+  "name": "rom-rag-sae-but3",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "ts:check": "tsc -b --pretty",
+    "ts:check:clean": "tsc -b --clean && tsc -b --pretty",
+    "build": "npm run build --workspaces --if-present",
+    "build:shared": "npm run build -w @repo/shared",
+    "test": "npm run test --workspaces --if-present",
+    "dev": "npm run build:shared && concurrently -k -n shared,backend,frontend -c blue,green,magenta \"npm:dev:shared\" \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:shared": "npm run dev -w @repo/shared",
+    "dev:backend": "npm run dev -w @repo/backend",
+    "dev:frontend": "npm run dev -w @repo/frontend",
+    "db:generate": "npm run db:generate -w @repo/backend",
+    "db:migrate": "npm run db:migrate -w @repo/backend",
+    "db:studio": "npm run db:studio -w @repo/backend",
+    "docker:dev": "docker compose up --build",
+    "docker:dev:watch": "docker compose logs -f",
+    "docker:dev:logs": "docker compose logs -f --tail=20",
+    "docker:dev:down": "docker compose down",
+    "docker:dev:reset": "docker compose down -v && docker compose up --build",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up --build -d",
+    "docker:prod:down": "docker compose -f docker-compose.prod.yml down"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,cjs,mjs}": [
+      "oxlint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md,yml,yaml,html}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
+    "@commitlint/types": "^21.2.0",
+    "concurrently": "^9.2.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.0",
+    "oxlint": "^1.81.0",
+    "prettier": "^3.9.6",
+    "typescript": "~6.0.3",
+    "yaml": "^2.9.0"
+  }
+}

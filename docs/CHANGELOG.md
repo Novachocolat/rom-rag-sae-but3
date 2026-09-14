@@ -15,6 +15,44 @@ Please, follow these types of changes:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+_The changelog must only be updated at the end of the day, **not at every single
+commit!**_
+
+## [Unreleased] - 2026-09-12
+
+### Added
+
+- Add an Express server with default configuration (helmet, CORS, JSON)
+- Add `GET /api/health` endpoint to get a per-dependency (PostgreSQL, Redis)
+  health state of the backend server
+- Add root devDependencies (concurrently + yaml for workflows) + Docker scripts
+- Add docker-compose services to build the monorepo
+- Add a test `User` model + initial Prisma migration to see if PostgreSQL is
+  healthy
+- Add README.md with team members, stack, getting started, ...
+
+### Changed
+
+- Updated docs
+- `shared/types` and `shared/schemas` moved into `shared/scr` for functional
+  build
+- Renamed files (e.g. `health.test.ts` -> `health.routes.test.ts`)
+- TypeScript is now set to version 6.0.3 for the whole monorepo
+
+### Removed
+
+- Empty backend files (`/service/core.ts`, `/service/utils.ts`,
+  `/storage/base.ts`, `/client/llm.ts`, `/client/embedding.ts`,
+  `/client/base.ts`)
+- Empty Nginx configuration file
+- Empty Dockerfile-s in `backend` and `frontend`
+- Removed string interpolation in `.env.example` as dotenv does not interpolate
+  strings (Docker does!)
+
+### Fixed
+
+- Fixed typos in `.dat` file names
+
 ## [Unreleased] - 2026-09-10
 
 ### Added
@@ -22,7 +60,7 @@ Please, follow these types of changes:
 - New documentation (ADRs, README, CONVENTIONS, CHANGELOG, etc.) files for
   easier management
 - Bruno collection to test API requests with a development environment
-- Simple dataset with 3 popular ROMs
+- Simple dataset with 3 example `.dat` files (Game Boy, Nintendo 64, Wii)
 
 ### Changed
 

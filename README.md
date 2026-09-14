@@ -26,7 +26,7 @@ together using **local AI pre-trained models (from Ollama)**.
 | Member                      | GitHub                                           | Main role                                                                                                                                                                                          |
 | --------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **David MELOCCO**           | [@ThFoxY](https://github.com/ThFoxY)             | ![Leader](https://img.shields.io/badge/role-leader-ffffff) ![Frontend](https://img.shields.io/badge/role-frontend-3b82f6) ![Docs%2FCI](https://img.shields.io/badge/role-docs/CI-d6172b)           |
-| **Neda Khelifi**            | [@Novachocolat](https://github.com/Novachocolat) | ![Backend](https://img.shields.io/badge/role-backend-16a34a) ![Data%2FInfra](https://img.shields.io/badge/role-data%2Finfra-f59e0b) ![Docs%2FCI](https://img.shields.io/badge/role-docs/CI-d6172b) |
+| **Neda Khelifi**            | [@Nedakh1307](https://github.com/Nedakh1307)     | ![Backend](https://img.shields.io/badge/role-backend-16a34a) ![Data%2FInfra](https://img.shields.io/badge/role-data%2Finfra-f59e0b) ![Docs%2FCI](https://img.shields.io/badge/role-docs/CI-d6172b) |
 | **Lysandre PACE--BOULNOIS** | [@Novachocolat](https://github.com/Novachocolat) | ![Backend](https://img.shields.io/badge/role-backend-16a34a) ![AI](https://img.shields.io/badge/role-AI-8b5cf6) ![Docs%2FCI](https://img.shields.io/badge/role-docs/CI-d6172b)                     |
 |                             |
 
@@ -68,6 +68,9 @@ together using **local AI pre-trained models (from Ollama)**.
 | **AI models** | Ollama with a local LLM (`gemma4:12b/26b`) and a embedding model (`embeddinggema`) |
 | **Quality**   | TypeScript strict, Oxlint, Prettier, Vitest, Husky, commitlint                     |
 | **Tooling**   | npm workspaces, Docker / Docker Compose, GitHub Actions                            |
+
+> The TypeScript/React stack (instead of a Python/Gradio stack) was approved by
+> @rzct, the supervisor of the project.
 
 ## Getting started
 

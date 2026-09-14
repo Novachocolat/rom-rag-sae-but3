@@ -17,6 +17,7 @@ export default {
         'config',
         'db',
         'repo',
+        'format',
       ],
     ],
     'subject-case': [2, 'never', ['start-case', 'pascal-case', 'upper-case']],

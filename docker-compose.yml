@@ -1,0 +1,114 @@
+name: rom-rag-sae-but3
+
+# One dev image for the three Node services; only the command differs
+x-dev-image: &dev-image
+  image: rom-rag-sae-but3-dev:local
+  build:
+    context: .
+    dockerfile: Dockerfile.dev
+
+x-dev-volumes: &dev-volumes
+  - ./:/app
+  - node_modules:/app/node_modules
+
+x-dev-env: &dev-env
+  NODE_ENV: development
+  DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-app}?schema=public
+  REDIS_URL: redis://redis:6379
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports:
+      - '${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  init:
+    <<: *dev-image
+    command:
+      - sh
+      - -c
+      - >-
+        npm ci --ignore-scripts && npm run build -w @repo/shared && npm run
+        db:generate -w @repo/backend && npm run db:deploy -w @repo/backend
+    environment:
+      <<: *dev-env
+    volumes: *dev-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  backend:
+    <<: *dev-image
+    command: npm run dev -w @repo/backend
+    environment:
+      <<: *dev-env
+      PORT: ${PORT:-3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CHOKIDAR_USEPOLLING: 'true'
+      CHOKIDAR_INTERVAL: '300'
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    volumes: *dev-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q -O - http://127.0.0.1:${PORT:-3000}/api/health >/dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  frontend:
+    <<: *dev-image
+    command: npm run dev -w @repo/frontend
+    environment:
+      NODE_ENV: development
+      VITE_API_PROXY_TARGET: http://backend:${PORT:-3000}
+      CHOKIDAR_USEPOLLING: 'true'
+      CHOKIDAR_INTERVAL: '300'
+    ports:
+      - '${FRONTEND_PORT:-5173}:5173'
+    volumes: *dev-volumes
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  node_modules:
+  postgres_data:
+  redis_data:

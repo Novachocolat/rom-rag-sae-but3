@@ -79,6 +79,7 @@ describe('AppError', () => {
       const error = AppError.serviceUnavailable(
         'OLLAMA_UNAVAILABLE',
         'Ollama ne répond pas',
+        details,
       )
 
       expect(error.statusCode).toBe(503)

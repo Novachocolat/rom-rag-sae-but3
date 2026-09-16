@@ -60,7 +60,10 @@ export function errorMiddleware(
   }
 
   if (statusCode >= 500) {
-    logger.error(err instanceof Error ? err.message : 'Erreur fatale non gérée')
+    logger.error(
+      err instanceof Error ? err.message : 'Erreur fatale non gérée',
+      logMeta,
+    )
   } else {
     logger.warn(`Échec de la requête : ${message}`, logMeta)
   }

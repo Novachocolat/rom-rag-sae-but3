@@ -1,5 +1,6 @@
-import { healthSchema, type Health } from '@repo/shared/schemas'
+import type { Health } from '@repo/shared/schemas'
 import { useEffect, useState } from 'react'
+import { apiClient } from './lib/api-client.js'
 import { cn } from './lib/utils.js'
 
 // Per-dependency display state, with `loading` for the pending first fetch
@@ -44,9 +45,8 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController()
 
-    fetch('/api/health', { signal: controller.signal })
-      .then((response) => response.json())
-      .then((body) => setHealth(healthSchema.parse(body)))
+    apiClient<Health>('/health', { signal: controller.signal })
+      .then((body) => setHealth(body))
       .catch(() => {
         if (!controller.signal.aborted) setFailed(true)
       })

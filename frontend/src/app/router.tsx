@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 import App from '../App.tsx'
-import { ProtectedRoute } from './components/guards/protectedRoute.tsx'
+import { ProtectedRoute } from './components/guards/ProtectedRoute.tsx'
+import { AppLayout } from './components/layouts/AppLayout.tsx'
 
 // Centralizes routing
 export const router = createBrowserRouter([
@@ -10,9 +11,13 @@ export const router = createBrowserRouter([
 
   // Protected routes
   {
-    path: '/',
     element: <ProtectedRoute />,
-    children: [{ path: '/', element: <App /> }],
+    children: [
+      {
+        element: <AppLayout />,
+        children: [{ path: '/', element: <App /> }],
+      },
+    ],
   },
 
   // Fallback if the route is unknown

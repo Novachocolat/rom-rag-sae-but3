@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 import App from '../App.tsx'
-import { ProtectedRoute } from './components/guards/ProtectedRoute.tsx'
-import { AppLayout } from './components/layouts/AppLayout.tsx'
+import { ProtectedRoute } from '@/app/components/guards/ProtectedRoute.tsx'
+import { AppLayout } from '@/app/components/layouts/AppLayout.tsx'
 
 // Centralizes routing
 export const router = createBrowserRouter([

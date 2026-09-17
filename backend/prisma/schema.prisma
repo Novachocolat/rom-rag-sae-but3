@@ -137,7 +137,7 @@ model AiProposal {
   id               String            @id @default(uuid())
   kind             AiProposalKind
   romId            String?
-  groupId          String?
+  collectionId     String?
   payload          Json
   rawResponse      String?
   model            String
@@ -152,9 +152,9 @@ model AiProposal {
   promptTokens     Int?
   completionTokens Int?
 
-  rom        Rom?        @relation(fields: [romId], references: [id])
-  group      Collection? @relation(fields: [groupId], references: [id])
-  reviewedBy User?       @relation("ReviewedProposals", fields: [reviewedById], references: [id])
+  rom              Rom?        @relation(fields: [romId], references: [id])
+  collection       Collection? @relation(fields: [collectionId], references: [id])
+  reviewedBy       User?       @relation("ReviewedProposals", fields: [reviewedById], references: [id])
 }
 
 enum CollectionSource {
@@ -179,14 +179,14 @@ model Collection {
 }
 
 model CollectionMember {
-  groupId      String
-  romId        String
-  variantLabel String?
+  collectionId      String
+  romId             String
+  variantLabel      String?
 
-  collection Collection @relation(fields: [groupId], references: [id])
+  collection Collection @relation(fields: [collectionId], references: [id])
   rom        Rom        @relation(fields: [romId], references: [id])
 
-  @@id([groupId, romId])
+  @@id([collectionId, romId])
 }
 
 model RomEmbedding {
@@ -194,6 +194,7 @@ model RomEmbedding {
   sourceText String
   model      String
   createdAt  DateTime @default(now())
+  embedding  Unsupported("vector(768)") // pgvector is not supported by Prisma yet
 
   rom Rom @relation(fields: [romId], references: [id])
 }

@@ -37,3 +37,5 @@
   gives a readable trace of user decisions on AI proposals, which is useful for
   the demonstration.
 - Risk(s): two state mechanisms increase the learning cost for the team and can
+  tempt a contributor to duplicate server data into Redux "for convenience";
+  this is mitigated by the explicit rule above and by code review.

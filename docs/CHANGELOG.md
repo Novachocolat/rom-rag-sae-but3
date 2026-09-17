@@ -18,6 +18,53 @@ Please, follow these types of changes:
 _The changelog must only be updated at the end of the day, **not at every single
 commit!**_
 
+## [Unreleased] - 2026-09-16
+
+### Added
+
+- Add `AppLayout` (sidebar + header with Ollama status and logged-in user) and
+  `HealthPanel` UI component polling `GET /api/health` every 30s
+- Add frontend auth hooks: `useMe`, `useSignin`, `useSignup`, `useLogout` (React
+  Query, `/auth/*` routes)
+- Add `router.tsx` with public routes (`/signup`, `/signin`), a `ProtectedRoute`
+  guard, and a catch-all redirect to `/`
+- Add `queryClient` (React Query) and `store` (Redux Toolkit, empty reducer for
+  now) providers
+- Add typed `apiClient` (fetch wrapper with credentials, JSON parsing) and
+  frontend `ApiError` class derived from the shared `apiErrorSchema`
+- Add Express secure configuration (`helmet`, `cors` with credentials,
+  `cookie-parser`) and the `rootRouter` barrel in `app.ts`
+- Add tests for `error.middleware`, `not-found.middleware`,
+  `request-id.middleware`, `validate.middleware`, `logger`, `routes/index`, and
+  `app.ts`
+- Add CSS theme variables (light/dark) in `index.css`
+
+### Changed
+
+- Rewrote `App.tsx` to delegate to `AppLayout`/`HealthPanel` instead of holding
+  markup directly
+- Updated `vite.config.ts` to proxy `/api` to the backend and to read `.env`
+  files from the monorepo root
+- Renamed `shared/src/types/api.ts` to `api.types.ts`
+
+## [Unreleased] - 2026-09-14
+
+### Added
+
+- Add `AppError` class with factories for common HTTP errors (`notFound`,
+  `badRequest`, `unauthorized`, `conflict`, `serviceUnavailable`)
+- Add a structured JSON `logger` (`debug`/`info`/`warn`/`error`, filtered by
+  `NODE_ENV`)
+- Add `error.middleware`, `not-found.middleware`, `request-id.middleware`
+  (per-request UUID + `X-Request-Id` header), and `validate.middleware` (Zod
+  body/query/params validation)
+- Add `apiErrorSchema` in `@repo/shared/schemas` for the
+  `{ error: { code, message, details?, requestId } }` envelope
+
+### Changed
+
+- Renamed `shared/src/schemas/env.ts` to `env.schema.ts`
+
 ## [Unreleased] - 2026-09-12
 
 ### Added

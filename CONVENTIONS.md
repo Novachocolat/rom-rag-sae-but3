@@ -90,13 +90,6 @@ file rather than inventing a new pattern.
   string-concatenate classes. Click here for
   [tailwind-merge + clsx documentation](https://dev.to/sheraz4194/mastering-tailwind-css-overcome-styling-conflicts-with-tailwind-merge-and-clsx-1dol).
 
-## Testing
-
-- Vitest. Co-locate tests as `*.test.ts` next to the file under test.
-- Every route under `backend/src/` must have a co-located test (enforced by CI's
-  `tests-and-comments` job).
-- At least reach **>= 80%** coverage.
-
 ## Infrastructure
 
 - **No Nginx configuration.** This project is assessed locally only, never
@@ -104,3 +97,10 @@ file rather than inventing a new pattern.
   a reverse proxy, TLS termination, or any production-hosting concern; if
   `docker-compose.prod.yml` needs a static-file server for the frontend build,
   keep it as simple as the dev setup.
+
+## Testing
+
+- Vitest. Co-locate tests as `*.test.ts` next to the file under test.
+- Every route under `backend/src/` must have a co-located test (enforced by CI's
+  `tests-and-comments` job).
+- At least reach **>= 80%** coverage.

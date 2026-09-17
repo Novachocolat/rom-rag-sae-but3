@@ -104,10 +104,11 @@ An `init` service runs once before `backend` and `frontend`: it builds
 `shared/dist`, generates the Prisma client, and applies migrations. All three
 Node services share the same image (`Dockerfile.dev`).
 
-The production stack (`docker-compose.prod.yml`) targets a local, Docker-only
-assessment setup. There is no **Nginx/reverse-proxy layer**, since this project
-is never hosted publicly (see
-[CONVENTIONS.md](./CONVENTIONS.md#infrastructure)).
+The production stack (`docker-compose.prod.yml` / `npm run docker:prod`) is
+**not implemented yet** (both the file and `.env.prod` are still empty),
+reported to a future sprint. Use `npm run docker:dev` until then; there will be
+no **Nginx/reverse-proxy layer**, since this project is never hosted publicly
+(see [CONVENTIONS.md](./CONVENTIONS.md#infrastructure)).
 
 ## Scripts
 
@@ -124,7 +125,7 @@ is never hosted publicly (see
 | `npm run db:migrate`                      | Applies Prisma migrations (dev).                      |
 | `npm run db:studio`                       | Opens Prisma Studio.                                  |
 | `npm run docker:dev` / `:down` / `:reset` | Starts/stops/resets the dev stack.                    |
-| `npm run docker:prod` / `:down`           | Starts/stops the production-like stack.               |
+| `npm run docker:prod` / `:down`           | **Not implemented yet** (future sprint).              |
 
 ## Repository structure
 

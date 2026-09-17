@@ -15,6 +15,24 @@ x-dev-env: &dev-env
   NODE_ENV: development
   DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-app}?schema=public
   REDIS_URL: redis://redis:6379
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+  OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL}
+  OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL}
+  OLLAMA_EMBEDDING_DIM: ${OLLAMA_EMBEDDING_DIM}
+  OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS}
+  OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX}
+  OLLAMA_TEMPERATURE: ${OLLAMA_TEMPERATURE}
+  OLLAMA_MAX_RETRIES: ${OLLAMA_MAX_RETRIES}
+  OLLAMA_THINKING: ${OLLAMA_THINKING}
+  ROM_LIBRARY_ROOT: ${ROM_LIBRARY_ROOT:-/roms}
+  ROM_EXTENSIONS: ${ROM_EXTENSIONS}
+  SCAN_CONCURRENCY: ${SCAN_CONCURRENCY}
+  SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME}
+  SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS}
+  AI_CACHE_TTL_SECONDS: ${AI_CACHE_TTL_SECONDS}
+  AI_CONFIDENCE_THRESHOLD: ${AI_CONFIDENCE_THRESHOLD}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5433}
+  FRONTEND_PORT: ${FRONTEND_PORT:-5173}
 
 services:
   postgres:
@@ -74,7 +92,12 @@ services:
       CHOKIDAR_INTERVAL: '300'
     ports:
       - '${PORT:-3000}:${PORT:-3000}'
-    volumes: *dev-volumes
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+      - ./dataset/roms:/roms:ro
     depends_on:
       postgres:
         condition: service_healthy

@@ -144,6 +144,24 @@ Migrations are managed by Prisma and live in `backend/prisma/migrations/`.
 - Run `npm run db:generate` after pulling any change that touches
   `schema.prisma` so your local Prisma client stays in sync.
 
+## DAT-o-MATIC configuration
+
+When downloading a new `.dat` file into `/dataset/dat`, you must follow these
+parameters:
+
+1. **Naming** -> No-Intro Naming Convention
+2. **BIOS** -> Exclude
+3. **Release** -> Fulltitle
+4. **License** -> Licensed
+5. **Life span** -> Machine life span
+6. **Adult titles** -> Exclude
+7. **Storage** -> Physical
+8. **Empty archives** -> Exclude
+9. **MIA ROMs** -> Exclude
+
+> Some parameters may differ for each platform. Keep it consistent to have
+> successful tests.
+
 ## Secrets
 
 - **No `.env` file is ever committed.** `.gitignore` already excludes `.env` and

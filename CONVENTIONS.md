@@ -77,6 +77,12 @@ file rather than inventing a new pattern.
 - `dataset/` holds only license-safe reference data: No-Intro `.dat` catalogs
   (`dataset/dat/`) and ROMs used to test the scanner (`dataset/roms/`). `.dat`
   catalogs are checksum/metadata databases and are fine to version.
+- The dataset must be efficient for testing purposes: small, no duplicate and
+  representative of what an user would scan (final dumps, licensed, physical).
+  Everything concerning prototypes, betas, bootlegs, BIOS, empty entries and MIA
+  must be excluded when downloading a new `.dat` file (see
+  [DAT-o-MATIC configuration](./CONTRIBUTING.md#dat-o-matic-configuration) if
+  you ever add a new `.dat`).
 - `prompts/` holds only reviewed, versioned prompt files that the backend
   actually loads. Treat a prompt change like a code change: it goes through a
   PR.

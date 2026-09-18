@@ -1,3 +1,5 @@
+<div align="center">
+
 # 🕹️ ROM RAG (Retrieval-Augmented Generation)
 
 A **video game ROM (Read-Only Memory) library manager 🕹️**: it searches through
@@ -8,6 +10,8 @@ databases, and enriches **unidentified ROMs** and **groups a game's variants**
 together using **local AI pre-trained models (from Ollama)**.
 
 > **See [docs/CHANGELOG.md](./docs/CHANGELOG.md) to be up-to-date.**
+
+</div>
 
 ## Table of contents
 
@@ -185,6 +189,7 @@ _Tests need neither PostgreSQL nor Redis: both are mocked._
 | [docs/AI.md](./docs/AI.md)                     | Models, prompts, output schemas, robustness.                                |
 | [docs/SECURITY.md](./docs/SECURITY.md)         | Security and data-integrity measures.                                       |
 | [docs/adr/](./docs/adr/)                       | Architecture Decision Records.                                              |
+| [docs/monitoring/](./docs/monitoring/)         | Sprints and User Stories.                                                   |
 
 > **All documentation was supervised and reviewed by Claude to ensure team's
 > productivity and comprehension.**

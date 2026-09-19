@@ -28,6 +28,7 @@
     "dev:frontend": "npm run dev -w @repo/frontend",
     "db:generate": "npm run db:generate -w @repo/backend",
     "db:migrate": "npm run db:migrate -w @repo/backend",
+    "db:seed": "npm run db:seed -w @repo/backend",
     "db:studio": "npm run db:studio -w @repo/backend",
     "docker:dev": "docker compose up --build",
     "docker:dev:watch": "docker compose logs -f",

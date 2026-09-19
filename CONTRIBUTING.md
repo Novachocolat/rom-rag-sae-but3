@@ -203,6 +203,8 @@ All commits from a merge **must be squashed** to not mess the Git history.
 
 The title of **Pull Requests** must follow **Conventional Commits** (see above).
 
+> The main branch is only merged when a sprint is completed. Never before.
+
 ## Architecture decisions
 
 Non-trivial technical choices are recorded as **ADRs** in `docs/adr/`.

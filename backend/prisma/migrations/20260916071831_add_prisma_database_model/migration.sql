@@ -107,7 +107,7 @@ CREATE TABLE "AiProposal" (
     "id" TEXT NOT NULL,
     "kind" "AiProposalKind" NOT NULL,
     "romId" TEXT,
-    "groupId" TEXT,
+    "collectionId" TEXT,
     "payload" JSONB NOT NULL,
     "rawResponse" TEXT,
     "model" TEXT NOT NULL,
@@ -140,11 +140,11 @@ CREATE TABLE "Collection" (
 
 -- CreateTable
 CREATE TABLE "CollectionMember" (
-    "groupId" TEXT NOT NULL,
+    "collectionId" TEXT NOT NULL,
     "romId" TEXT NOT NULL,
     "variantLabel" TEXT,
 
-    CONSTRAINT "CollectionMember_pkey" PRIMARY KEY ("groupId","romId")
+    CONSTRAINT "CollectionMember_pkey" PRIMARY KEY ("collectionId","romId")
 );
 
 -- CreateTable
@@ -218,7 +218,7 @@ ALTER TABLE "Rom" ADD CONSTRAINT "Rom_datEntryId_fkey" FOREIGN KEY ("datEntryId"
 ALTER TABLE "AiProposal" ADD CONSTRAINT "AiProposal_romId_fkey" FOREIGN KEY ("romId") REFERENCES "Rom"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AiProposal" ADD CONSTRAINT "AiProposal_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Collection"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AiProposal" ADD CONSTRAINT "AiProposal_collectionId_fkey" FOREIGN KEY ("collectionId") REFERENCES "Collection"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AiProposal" ADD CONSTRAINT "AiProposal_reviewedById_fkey" FOREIGN KEY ("reviewedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -230,7 +230,7 @@ ALTER TABLE "Collection" ADD CONSTRAINT "Collection_userId_fkey" FOREIGN KEY ("u
 ALTER TABLE "Collection" ADD CONSTRAINT "Collection_platformId_fkey" FOREIGN KEY ("platformId") REFERENCES "Platform"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CollectionMember" ADD CONSTRAINT "CollectionMember_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Collection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "CollectionMember" ADD CONSTRAINT "CollectionMember_collectionId_fkey" FOREIGN KEY ("collectionId") REFERENCES "Collection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CollectionMember" ADD CONSTRAINT "CollectionMember_romId_fkey" FOREIGN KEY ("romId") REFERENCES "Rom"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

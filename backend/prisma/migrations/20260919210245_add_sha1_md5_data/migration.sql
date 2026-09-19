@@ -15,9 +15,6 @@
 ALTER TYPE "IdentificationSource" ADD VALUE 'DAT_SHA1_DATA';
 ALTER TYPE "IdentificationSource" ADD VALUE 'DAT_MD5_DATA';
 
--- DropIndex
-DROP INDEX "romembedding_embedding_hnsw";
-
 -- AlterTable
 ALTER TABLE "Rom" ADD COLUMN     "headerBytesSkipped" INTEGER NOT NULL DEFAULT 0,
 ADD COLUMN     "md5Data" TEXT,

@@ -19,9 +19,11 @@
 
 **What has been decided**
 
-- Two Compose files are maintained: `compose.yaml` for development, with bind
-  mounts and hot reload, and `compose.prod.yaml` for the graded build, using
-  multi-stage images and Nginx in front of the frontend.
+- Two Compose files are maintained: `docker-compose.yml` for development, with
+  bind mounts and hot reload, and `docker-compose.prod.yml` for the final build,
+  using multi-stage images. There is no reverse proxy: the project is assessed
+  locally only and is never hosted publicly (see
+  [CONVENTIONS.md](../../CONVENTIONS.md#infrastructure)).
 - The database image is `pgvector/pgvector`, so the extension is available
   without a custom build.
 - Ollama is **not** containerised: it is an external service reached through

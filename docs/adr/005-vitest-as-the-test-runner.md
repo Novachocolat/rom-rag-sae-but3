@@ -21,8 +21,10 @@
 
 - Vitest is the single test runner for `shared`, `backend` and `frontend`.
 - Tests are co-located as `*.test.ts(x)` next to the unit under test.
-- Coverage is measured with `v8` and a global threshold of 80% is declared in
-  `vitest.config.ts`, so the CI job fails without any extra step.
+- Coverage is measured with `v8`, with a threshold of 80% lines/functions/
+  statements and 70% branches declared in `backend/vitest.config.ts`, so the CI
+  job fails without any extra step. `backend` is the only workspace with actual
+  test files today.
 - Integration tests targeting PostgreSQL and Redis run against the service
   containers declared in the CI workflow, never against a developer machine.
 

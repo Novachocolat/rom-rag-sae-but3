@@ -27,12 +27,3 @@ export function createPaginatedResponseSchema<T extends z.ZodType>(
     pagination: paginationSchema,
   })
 }
-
-// Helper for a TypeScript paginated generic type
-export type Paginated<T> = {
-  data: T[]
-  pagination: Pagination
-}
-
-export type ApiError = z.infer<typeof apiErrorSchema>
-export type Pagination = z.infer<typeof paginationSchema>

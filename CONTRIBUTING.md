@@ -143,6 +143,16 @@ Migrations are managed by Prisma and live in `backend/prisma/migrations/`.
   migration instead, even to fix a typo.
 - Run `npm run db:generate` after pulling any change that touches
   `schema.prisma` so your local Prisma client stays in sync.
+- **Review every generated migration for the HNSW index.** Prisma cannot express
+  the pgvector HNSW index on `RomEmbedding.embedding`, so `prisma migrate dev`
+  treats it as drift and writes `DROP INDEX "romembedding_embedding_hnsw";` into
+  **every** migration it generates, whatever the change was about. Delete that
+  line before applying or committing the migration (use `--create-only` to edit
+  it first). `backend/src/lib/migrations.test.ts` fails if a migration drops the
+  index without recreating it.
+- Seed data lives in `backend/prisma/seed.ts`. It runs automatically in the
+  Docker `init` service, or by hand with `npm run db:seed`. It only upserts, so
+  it is safe to replay.
 
 ## DAT-o-MATIC configuration
 

@@ -15,6 +15,8 @@ datasource db {
 enum IdentificationSource {
   DAT_SHA1
   DAT_MD5
+  DAT_SHA1_DATA
+  DAT_MD5_DATA
   DAT_NAME
   AI_PROPOSED
   USER_CONFIRMED
@@ -97,6 +99,9 @@ model Rom {
   md5                  String
   sha1                 String
   crc32                String?
+  md5Data              String?
+  sha1Data             String?
+  headerBytesSkipped   Int                  @default(0)
   firstSeenAt          DateTime             @default(now())
   lastScannedAt        DateTime             @updatedAt
   platformId           String?
@@ -120,6 +125,7 @@ model Rom {
 
   @@unique([userId, relativePath])
   @@index([userId, sha1])
+  @@index([userId, sha1Data])
 }
 
 enum AiProposalKind {

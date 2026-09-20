@@ -89,10 +89,19 @@ Notion / GitHub  →  issue  →  branch  →  PR  →  review  →  merge  → 
 
 ## Branching
 
+> `main` is the reference branch of this project. **Never work directly on this
+> branch!**
+
 - `main` — production-ready, protected.
 - `dev` — integration branch, protected. All feature work merges here first.
 - Feature branches: `<type>/<short-description>`, e.g. `feat/user-auth`,
   `fix/redis-reconnect`. Type matches the Conventional Commits types below.
+
+`dev` only contains reviewed code after validated merging (after your PR was
+reviewed).
+
+`main` will only be merge with `dev` once a sprint is completed. **Never before,
+to keep it clean.**
 
 ## Commits
 
@@ -122,11 +131,6 @@ are checked automatically by commitlint (Husky `commit-msg` hook):
   above fits better than nothing.
 
 - `subject`: imperative, lowercase, no trailing period
-
-**Never work on `main`/`master` branch!**
-
-`dev` only contains reviewed code after validated merging (after your PR was
-reviewed).
 
 ## Database migrations
 

@@ -1,3 +1,4 @@
+// backend/src/service/identification.service.ts
 export type IdentificationSource =
   | 'DAT_SHA1'
   | 'DAT_MD5'
@@ -22,7 +23,6 @@ export interface DatEntry {
   md5: string
   [key: string]: unknown
 }
-
 export interface DatLookup {
   findBySha1Full(sha1: string): Promise<DatEntry | null>
   findByMd5Full(md5: string): Promise<DatEntry | null>
@@ -47,10 +47,7 @@ const CONFIDENCE: Record<IdentificationSource, number> = {
   UNIDENTIFIED: 0,
 }
 
-// SHA-1 avant MD5 (MD5 est cassé en collision) ; empreinte fichier entier
-// avant empreinte données seules (une correspondance données-seules prouve
-// le bon jeu mais un en-tête différent, d'où 0.97 et non 1.0). Échelons 3/4
-// ignorés si headerBytesSkipped === 0 (GB/GBC/GBA : requêtes inutiles).
+// Identification of ROM candidate in a DAT ---
 export async function identifyRom(
   candidate: RomCandidate,
   datLookup: DatLookup,

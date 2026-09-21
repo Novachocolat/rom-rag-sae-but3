@@ -18,11 +18,10 @@ function makeCandidate(overrides: Partial<RomCandidate> = {}): RomCandidate {
     ...overrides,
   }
 }
-
 function makeEntry(name: string): DatEntry {
   return { name, sha1: 'x', md5: 'y' }
 }
-
+// Helper to create a mock DatLookup with optional overrides
 function makeLookup(overrides: Partial<DatLookup> = {}): DatLookup {
   return {
     findBySha1Full: vi.fn().mockResolvedValue(null),
@@ -33,7 +32,7 @@ function makeLookup(overrides: Partial<DatLookup> = {}): DatLookup {
     ...overrides,
   }
 }
-
+// Tests for identifyRom function
 describe('identifyRom', () => {
   it('retourne DAT_SHA1 en priorité même si les autres échelons matcheraient', async () => {
     const entry = makeEntry('Match SHA1')

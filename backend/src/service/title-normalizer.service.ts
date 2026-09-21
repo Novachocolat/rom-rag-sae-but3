@@ -1,7 +1,3 @@
-// backend/src/service/title-normalizer.service.ts
-// Service pur : normalisation No-Intro (région, langues, révision, flags)
-// + clé baseTitle pour regrouper les variantes d'un même jeu.
-
 export interface NormalizedTitle {
   baseTitle: string
   region: string | null
@@ -9,7 +5,7 @@ export interface NormalizedTitle {
   revision: string | null
   flags: string[]
 }
-
+// Normalization of ROM title from file name
 const REGION_TOKENS = new Set([
   'usa',
   'europe',
@@ -75,7 +71,7 @@ const TECH_FLAGS = new Set([
   'cgb+sgb enhanced',
   'gb compatible',
 ])
-
+// Regular expressions to match revision tags
 const REVISION_REGEX = /^rev(?:ision)?\.?\s*([0-9]+|[a-z])$/i
 const SPECIAL_REVISION_REGEX =
   /^(beta|proto|prototype|demo|sample|unl|unlicensed)(\s*\d+)?$/i
@@ -90,8 +86,6 @@ export function normalizeTitle(fileName: string): NormalizedTitle {
     return ' '
   })
 
-  // extension retirée après les tags, sinon "Title.sfc [!]" ne se termine
-  // pas par l'extension une fois [!] encore présent
   working = working.replace(/\.[a-z0-9]{1,4}\s*$/i, '')
 
   let region: string | null = null
@@ -134,7 +128,7 @@ export function normalizeTitle(fileName: string): NormalizedTitle {
       continue
     }
 
-    flags.push(tag) // tag non reconnu : conservé plutôt que perdu
+    flags.push(tag)
   }
 
   return {
@@ -145,12 +139,10 @@ export function normalizeTitle(fileName: string): NormalizedTitle {
     flags,
   }
 }
-
+// Helper to build the base title from the remaining string after removing tags
 function buildBaseTitle(remainder: string): string {
   let title = remainder.replace(/\s+/g, ' ').trim().replace(/-\s*$/, '').trim()
 
-  // article antéposé -> postposé, sur le titre principal seulement, pour
-  // faire converger "The_Legend_of_Zelda_-_X" et "Legend of Zelda, The - X"
   const separatorIndex = title.indexOf(' - ')
   const mainPart =
     separatorIndex === -1 ? title : title.slice(0, separatorIndex)
@@ -172,7 +164,7 @@ function buildBaseTitle(remainder: string): string {
     .replace(/\s+/g, ' ')
     .trim()
 }
-
+// Helper to capitalize the first letter of a string and lowercase the rest
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
 }

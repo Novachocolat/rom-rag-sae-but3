@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeTitle } from './title-normalizer.service.js'
-
+// Tests for normalizeTitle function
 describe('normalizeTitle', () => {
   it('extrait la région simple', () => {
     const result = normalizeTitle('Super Mario Kart (Europe).sfc')

@@ -6,4 +6,10 @@ import { healthRouter } from './health.routes.js'
 export const rootRouter = Router()
 
 rootRouter.use(healthRouter) // GET /health
-rootRouter.use(authRouter) // POST /auth/signup, POST /auth/login, POST /auth/logout, GET /auth/me
+/**
+ * POST /auth/signup
+ * POST /auth/login
+ * POST /auth/logout
+ * GET /auth/me
+ */
+rootRouter.use(authRouter)

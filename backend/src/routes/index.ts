@@ -5,5 +5,5 @@ import { healthRouter } from './health.routes.js'
 // Barrel file to exports all routes
 export const rootRouter = Router()
 
-rootRouter.use(healthRouter)
-rootRouter.use(authRouter)
+rootRouter.use(healthRouter) // GET /health
+rootRouter.use(authRouter) // POST /auth/signup, POST /auth/login, POST /auth/logout, GET /auth/me

@@ -89,10 +89,19 @@ Notion / GitHub  →  issue  →  branch  →  PR  →  review  →  merge  → 
 
 ## Branching
 
+> `main` is the reference branch of this project. **Never work directly on this
+> branch!**
+
 - `main` — production-ready, protected.
 - `dev` — integration branch, protected. All feature work merges here first.
 - Feature branches: `<type>/<short-description>`, e.g. `feat/user-auth`,
   `fix/redis-reconnect`. Type matches the Conventional Commits types below.
+
+`dev` only contains reviewed code after validated merging (after your PR was
+reviewed).
+
+`main` will only be merge with `dev` once a sprint is completed. **Never before,
+to keep it clean.**
 
 ## Commits
 
@@ -123,11 +132,6 @@ are checked automatically by commitlint (Husky `commit-msg` hook):
 
 - `subject`: imperative, lowercase, no trailing period
 
-**Never work on `main`/`master` branch!**
-
-`dev` only contains reviewed code after validated merging (after your PR was
-reviewed).
-
 ## Database migrations
 
 Migrations are managed by Prisma and live in `backend/prisma/migrations/`.
@@ -143,6 +147,34 @@ Migrations are managed by Prisma and live in `backend/prisma/migrations/`.
   migration instead, even to fix a typo.
 - Run `npm run db:generate` after pulling any change that touches
   `schema.prisma` so your local Prisma client stays in sync.
+- **Review every generated migration for the HNSW index.** Prisma cannot express
+  the pgvector HNSW index on `RomEmbedding.embedding`, so `prisma migrate dev`
+  treats it as drift and writes `DROP INDEX "romembedding_embedding_hnsw";` into
+  **every** migration it generates, whatever the change was about. Delete that
+  line before applying or committing the migration (use `--create-only` to edit
+  it first). `backend/src/lib/migrations.test.ts` fails if a migration drops the
+  index without recreating it.
+- Seed data lives in `backend/prisma/seed.ts`. It runs automatically in the
+  Docker `init` service, or by hand with `npm run db:seed`. It only upserts, so
+  it is safe to replay.
+
+## DAT-o-MATIC configuration
+
+When downloading a new `.dat` file into `/dataset/dat`, you must follow these
+parameters:
+
+1. **Naming** -> No-Intro Naming Convention
+2. **BIOS** -> Exclude
+3. **Release** -> Fulltitle
+4. **License** -> Licensed
+5. **Life span** -> Machine life span
+6. **Adult titles** -> Exclude
+7. **Storage** -> Physical
+8. **Empty archives** -> Exclude
+9. **MIA ROMs** -> Exclude
+
+> Some parameters may differ for each platform. Keep it consistent to have
+> successful tests.
 
 ## Secrets
 
@@ -184,6 +216,8 @@ sections.
 All commits from a merge **must be squashed** to not mess the Git history.
 
 The title of **Pull Requests** must follow **Conventional Commits** (see above).
+
+> The main branch is only merged when a sprint is completed. Never before.
 
 ## Architecture decisions
 

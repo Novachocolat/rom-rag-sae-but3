@@ -72,7 +72,8 @@ services:
       - -c
       - >-
         npm ci --ignore-scripts && npm run build -w @repo/shared && npm run
-        db:generate -w @repo/backend && npm run db:deploy -w @repo/backend
+        db:generate -w @repo/backend && npm run db:deploy -w @repo/backend &&
+        npm run db:seed -w @repo/backend
     environment:
       <<: *dev-env
     volumes: *dev-volumes

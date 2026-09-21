@@ -1,3 +1,5 @@
+<div align="center">
+
 # 🕹️ ROM RAG (Retrieval-Augmented Generation)
 
 A **video game ROM (Read-Only Memory) library manager 🕹️**: it searches through
@@ -8,6 +10,8 @@ databases, and enriches **unidentified ROMs** and **groups a game's variants**
 together using **local AI pre-trained models (from Ollama)**.
 
 > **See [docs/CHANGELOG.md](./docs/CHANGELOG.md) to be up-to-date.**
+
+</div>
 
 ## Table of contents
 
@@ -104,10 +108,11 @@ An `init` service runs once before `backend` and `frontend`: it builds
 `shared/dist`, generates the Prisma client, and applies migrations. All three
 Node services share the same image (`Dockerfile.dev`).
 
-The production stack (`docker-compose.prod.yml`) targets a local, Docker-only
-assessment setup. There is no **Nginx/reverse-proxy layer**, since this project
-is never hosted publicly (see
-[CONVENTIONS.md](./CONVENTIONS.md#infrastructure)).
+The production stack (`docker-compose.prod.yml` / `npm run docker:prod`) is
+**not implemented yet** (both the file and `.env.prod` are still empty),
+reported to a future sprint. Use `npm run docker:dev` until then; there will be
+no **Nginx/reverse-proxy layer**, since this project is never hosted publicly
+(see [CONVENTIONS.md](./CONVENTIONS.md#infrastructure)).
 
 ## Scripts
 
@@ -124,7 +129,7 @@ is never hosted publicly (see
 | `npm run db:migrate`                      | Applies Prisma migrations (dev).                      |
 | `npm run db:studio`                       | Opens Prisma Studio.                                  |
 | `npm run docker:dev` / `:down` / `:reset` | Starts/stops/resets the dev stack.                    |
-| `npm run docker:prod` / `:down`           | Starts/stops the production-like stack.               |
+| `npm run docker:prod` / `:down`           | **Not implemented yet** (future sprint).              |
 
 ## Repository structure
 
@@ -184,6 +189,7 @@ _Tests need neither PostgreSQL nor Redis: both are mocked._
 | [docs/AI.md](./docs/AI.md)                     | Models, prompts, output schemas, robustness.                                |
 | [docs/SECURITY.md](./docs/SECURITY.md)         | Security and data-integrity measures.                                       |
 | [docs/adr/](./docs/adr/)                       | Architecture Decision Records.                                              |
+| [docs/monitoring/](./docs/monitoring/)         | Sprints and User Stories.                                                   |
 
 > **All documentation was supervised and reviewed by Claude to ensure team's
 > productivity and comprehension.**

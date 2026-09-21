@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-07
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Reviewer(s):** @ThFoxY
 

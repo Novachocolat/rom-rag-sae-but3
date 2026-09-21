@@ -3,11 +3,12 @@ import { createApp } from './app.js'
 import { env } from './env.js'
 import { prisma } from './lib/prisma.js'
 import { redis } from './lib/redis.js'
+import { logger } from './lib/logger.js'
 
 // Starts the server and binds the application to `port` with a graceful shutdown
 export function startServer(port: number = env.PORT): Server {
   const server = createApp().listen(port, () => {
-    console.log(`🎊 backend listening on port ${String(port)}`)
+    logger.info(`🎊 backend listening on port ${String(port)}`)
   })
 
   // Waits for the server to close, then disconnects from the database and Redis before exiting

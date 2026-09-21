@@ -21,7 +21,7 @@ export default defineConfig({
       OLLAMA_MAX_RETRIES: '2',
       OLLAMA_THINKING: 'true',
       ROM_LIBRARY_ROOT: '/roms',
-      ROM_EXTENSIONS: '.nes,.snes,.gba,.n64,.iso',
+      ROM_EXTENSIONS: '.gb,.gbc,.gba,.nes,.sfc,.smc,.md,.bin,.gen',
       SCAN_CONCURRENCY: '4',
       SESSION_COOKIE_NAME: 'rr_session',
       SESSION_TTL_SECONDS: '604800',

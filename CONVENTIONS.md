@@ -77,6 +77,12 @@ file rather than inventing a new pattern.
 - `dataset/` holds only license-safe reference data: No-Intro `.dat` catalogs
   (`dataset/dat/`) and ROMs used to test the scanner (`dataset/roms/`). `.dat`
   catalogs are checksum/metadata databases and are fine to version.
+- The dataset must be efficient for testing purposes: small, no duplicate and
+  representative of what an user would scan (final dumps, licensed, physical).
+  Everything concerning prototypes, betas, bootlegs, BIOS, empty entries and MIA
+  must be excluded when downloading a new `.dat` file (see
+  [DAT-o-MATIC configuration](./CONTRIBUTING.md#dat-o-matic-configuration) if
+  you ever add a new `.dat`).
 - `prompts/` holds only reviewed, versioned prompt files that the backend
   actually loads. Treat a prompt change like a code change: it goes through a
   PR.
@@ -90,13 +96,6 @@ file rather than inventing a new pattern.
   string-concatenate classes. Click here for
   [tailwind-merge + clsx documentation](https://dev.to/sheraz4194/mastering-tailwind-css-overcome-styling-conflicts-with-tailwind-merge-and-clsx-1dol).
 
-## Testing
-
-- Vitest. Co-locate tests as `*.test.ts` next to the file under test.
-- Every route under `backend/src/` must have a co-located test (enforced by CI's
-  `tests-and-comments` job).
-- At least reach **>= 80%** coverage.
-
 ## Infrastructure
 
 - **No Nginx configuration.** This project is assessed locally only, never
@@ -104,3 +103,10 @@ file rather than inventing a new pattern.
   a reverse proxy, TLS termination, or any production-hosting concern; if
   `docker-compose.prod.yml` needs a static-file server for the frontend build,
   keep it as simple as the dev setup.
+
+## Testing
+
+- Vitest. Co-locate tests as `*.test.ts` next to the file under test.
+- Every route under `backend/src/` must have a co-located test (enforced by CI's
+  `tests-and-comments` job).
+- At least reach **>= 80%** coverage.

@@ -59,13 +59,17 @@ export function errorMiddleware(
     stack: err instanceof Error ? err.stack : String(err),
   }
 
+  // 3. Ensures logs are properly sent with metadata
   if (statusCode >= 500) {
-    logger.error(err instanceof Error ? err.message : 'Erreur fatale non gérée')
+    logger.error(
+      err instanceof Error ? err.message : 'Erreur fatale non gérée',
+      logMeta,
+    )
   } else {
     logger.warn(`Échec de la requête : ${message}`, logMeta)
   }
 
-  // 3.Sends the response in JSON
+  // 4. Sends the response in JSON
   res.status(statusCode).json({
     error: {
       code,

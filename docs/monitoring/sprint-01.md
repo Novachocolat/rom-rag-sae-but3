@@ -1,4 +1,4 @@
-# Sprints n°1 - Socle technique, schéma de données, authentification
+# Sprint n°1 - Socle technique, schéma de données, authentification
 
 Ce sprint ne produit aucune fonctionnalité ROM visible, et c'est voulu. Il pose
 les quatre fondations sans lesquelles tout le reste sera à réécrire :

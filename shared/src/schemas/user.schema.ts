@@ -1,22 +1,19 @@
 import { z } from 'zod'
 
-// Payload to create a new account. 12 chars is the minimum recommended by
-// OWASP for a password that is not paired with a second factor.
+/** Signup payload. 12-char minimum password, per the OWASP baseline. */
 export const signupSchema = z.object({
   email: z.email(),
   password: z.string().min(12),
   displayName: z.string().min(1).optional(),
 })
 
-// Payload to open a session. No length check here: it must keep accepting an
-// existing password even if the signup policy changes later.
+/** Login payload. No length check, so an older password still logs in. */
 export const loginSchema = z.object({
   email: z.email(),
   password: z.string().min(1),
 })
 
-// Shape of a user as returned by the API. `passwordHash` must never appear
-// here, or anywhere else in an HTTP response.
+/** User shape returned by the API — never includes `passwordHash`. */
 export const publicUserSchema = z.object({
   id: z.string(),
   email: z.email(),

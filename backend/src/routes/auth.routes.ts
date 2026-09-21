@@ -20,11 +20,7 @@ import { deleteSession, saveSession } from '../storage/session.storage.js'
 
 export const authRouter = Router()
 
-// Shared cookie attributes for the session cookie. `secure: false` is
-// intentional: this is a local-only application (see docs/SECURITY.md), so
-// there is no HTTPS termination in front of it to make a `secure` cookie
-// usable in development. `sameSite: 'lax'` blocks cross-site POST/fetch use
-// of the cookie while still sending it on a top-level navigation.
+// secure: false because this is a local-only app with no TLS in front of it.
 const SESSION_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
@@ -50,6 +46,8 @@ authRouter.post(
     try {
       const { email, password, displayName } = req.body
 
+      // Check-then-insert: a small race window exists, acceptable at this
+      // project's scale.
       const existing = await findUserByEmail(email)
       if (existing) {
         next(AppError.conflict('EMAIL_ALREADY_EXISTS', 'Email already in use'))
@@ -75,8 +73,7 @@ authRouter.post(
     try {
       const { email, password } = req.body
 
-      // Never reveal whether the email or the password was wrong: a single
-      // generic error for both cases (see docs/SECURITY.md).
+      // Same error for a wrong email or a wrong password: never reveal which.
       const invalidCredentials = AppError.unauthorized(
         'INVALID_CREDENTIALS',
         'Invalid credentials',
@@ -107,8 +104,7 @@ authRouter.post('/auth/logout', async (req, res, next) => {
   try {
     const token: unknown = req.cookies[env.SESSION_COOKIE_NAME]
 
-    // Idempotent: still succeeds if there is no cookie or the session was
-    // already gone, so a double logout is never an error.
+    // Idempotent: a missing or already-gone session is not an error.
     if (typeof token === 'string' && token.length > 0) {
       await deleteSession(token)
     }
@@ -124,8 +120,7 @@ authRouter.get('/auth/me', requireAuth, async (_req, res, next) => {
   try {
     const user = await findUserById(res.locals.userId as string)
 
-    // The session was valid, but the account it points to is gone (e.g.
-    // deleted after the session was created): treat it as unauthenticated.
+    // Session valid, but the account behind it is gone: treat as logged out.
     if (!user) {
       next(AppError.unauthorized('UNAUTHENTICATED', 'Authentication required'))
       return

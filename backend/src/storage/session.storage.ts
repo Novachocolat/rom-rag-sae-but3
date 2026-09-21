@@ -1,13 +1,12 @@
 import { redis } from '../lib/redis.js'
 
-// Sessions are ephemeral, read on almost every request, and need native
-// expiry: the canonical use case for Redis rather than Postgres, and Redis
-// is already part of the stack (see docs/adr).
+// Sessions are ephemeral and read on almost every request a good fit for
+// Redis, already part of the stack (see ADR-010).
 function sessionKey(token: string): string {
   return `session:${token}`
 }
 
-// Creates a session, expiring automatically after `ttlSeconds`.
+/** Creates a session that expires automatically after `ttlSeconds`. */
 export function saveSession(
   token: string,
   userId: string,
@@ -16,21 +15,18 @@ export function saveSession(
   return redis.set(sessionKey(token), userId, 'EX', ttlSeconds)
 }
 
-// Returns the user id tied to a session token, or null if it does not exist
-// (never existed, expired, or was deleted by a logout).
+/** Returns the session's userId, or null if unknown, expired, or deleted. */
 export function getSession(token: string): Promise<string | null> {
   return redis.get(sessionKey(token))
 }
 
-// Deletes a session outright, e.g. on logout: the token becomes unusable
-// immediately, unlike a stateless token that would keep validating until it
-// expires on its own.
+/** Deletes a session immediately, unlike a stateless token that would keep
+ * validating until it expires on its own. */
 export async function deleteSession(token: string): Promise<void> {
   await redis.del(sessionKey(token))
 }
 
-// Extends a session's TTL on every authenticated request, so an active user
-// is never logged out mid-use while an idle one still expires.
+/** Renews a session's TTL (sliding expiration) on each authenticated request. */
 export async function touchSession(
   token: string,
   ttlSeconds: number,

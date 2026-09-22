@@ -1,0 +1,231 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+enum IdentificationSource {
+  DAT_SHA1
+  DAT_MD5
+  DAT_SHA1_DATA
+  DAT_MD5_DATA
+  DAT_NAME
+  AI_PROPOSED
+  USER_CONFIRMED
+  UNIDENTIFIED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  roms        Rom[]
+  collections Collection[]
+  scanJobs    ScanJob[]
+  aiProposals AiProposal[] @relation("ReviewedProposals")
+}
+
+model Platform {
+  id         String   @id @default(uuid())
+  slug       String   @unique
+  name       String
+  shortName  String?
+  extensions String[]
+
+  roms        Rom[]
+  datFiles    DatFile[]
+  collections Collection[]
+}
+
+model DatFile {
+  id          String   @id @default(uuid())
+  platformId  String
+  headerName  String
+  version     String?
+  fileName    String
+  entryCount  Int
+  importedAt  DateTime @default(now())
+  contentSha1 String   @unique
+
+  platform Platform   @relation(fields: [platformId], references: [id])
+  entries  DatEntry[]
+}
+
+model DatEntry {
+  id             String   @id @default(uuid())
+  datFileId      String
+  gameName       String
+  gameExternalId String
+  cloneOfId      String?
+  description    String
+  categories     String[]
+  serial         String?
+  romName        String
+  sizeBytes      BigInt
+  crc            String?
+  md5            String?
+  sha1           String?
+  sha256         String?
+  status         String?
+
+  datFile DatFile @relation(fields: [datFileId], references: [id])
+  roms    Rom[]
+
+  @@index([md5])
+  @@index([sha1])
+  @@index([datFileId])
+  @@index([gameName])
+}
+
+model Rom {
+  id                   String               @id @default(uuid())
+  userId               String
+  relativePath         String
+  fileName             String
+  extension            String
+  sizeBytes            BigInt
+  md5                  String
+  sha1                 String
+  crc32                String?
+  md5Data              String?
+  sha1Data             String?
+  headerBytesSkipped   Int                  @default(0)
+  firstSeenAt          DateTime             @default(now())
+  lastScannedAt        DateTime             @updatedAt
+  platformId           String?
+  datEntryId           String?
+  identificationSource IdentificationSource
+  confidence           Float?
+  title                String?
+  region               String?
+  languages            String[]
+  releaseYear          Int?
+  publisher            String?
+  genre                String?
+  summary              String?
+
+  user              User               @relation(fields: [userId], references: [id])
+  platform          Platform?          @relation(fields: [platformId], references: [id])
+  datEntry          DatEntry?          @relation(fields: [datEntryId], references: [id])
+  aiProposals       AiProposal[]
+  collectionMembers CollectionMember[]
+  embedding         RomEmbedding?
+
+  @@unique([userId, relativePath])
+  @@index([userId, sha1])
+  @@index([userId, sha1Data])
+}
+
+enum AiProposalKind {
+  IDENTIFICATION
+  GROUPING
+}
+
+enum AiProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model AiProposal {
+  id               String            @id @default(uuid())
+  kind             AiProposalKind
+  romId            String?
+  collectionId     String?
+  payload          Json
+  rawResponse      String?
+  model            String
+  promptName       String
+  promptVersion    String
+  confidence       Float
+  status           AiProposalStatus
+  createdAt        DateTime          @default(now())
+  reviewedAt       DateTime?
+  reviewedById     String?
+  durationMs       Int?
+  promptTokens     Int?
+  completionTokens Int?
+
+  rom              Rom?        @relation(fields: [romId], references: [id])
+  collection       Collection? @relation(fields: [collectionId], references: [id])
+  reviewedBy       User?       @relation("ReviewedProposals", fields: [reviewedById], references: [id])
+}
+
+enum CollectionSource {
+  DAT_CLONE
+  AI
+  MANUAL
+}
+
+model Collection {
+  id             String           @id @default(uuid())
+  userId         String
+  canonicalTitle String
+  platformId     String?
+  source         CollectionSource
+  confidence     Float?
+  createdAt      DateTime         @default(now())
+
+  user        User               @relation(fields: [userId], references: [id])
+  platform    Platform?          @relation(fields: [platformId], references: [id])
+  members     CollectionMember[]
+  aiProposals AiProposal[]
+}
+
+model CollectionMember {
+  collectionId      String
+  romId             String
+  variantLabel      String?
+
+  collection Collection @relation(fields: [collectionId], references: [id])
+  rom        Rom        @relation(fields: [romId], references: [id])
+
+  @@id([collectionId, romId])
+}
+
+model RomEmbedding {
+  romId      String   @id
+  sourceText String
+  model      String
+  createdAt  DateTime @default(now())
+  embedding  Unsupported("vector(768)") // pgvector is not supported by Prisma yet
+
+  rom Rom @relation(fields: [romId], references: [id])
+}
+
+enum ScanJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model ScanJob {
+  id                String        @id @default(uuid())
+  userId            String
+  rootRelativePath  String
+  status            ScanJobStatus
+  totalFiles        Int
+  processedFiles    Int
+  identifiedCount   Int
+  unidentifiedCount Int
+  errorCount        Int
+  startedAt         DateTime      @default(now())
+  finishedAt        DateTime?
+  errorMessage       String?
+
+  user User @relation(fields: [userId], references: [id])
+}

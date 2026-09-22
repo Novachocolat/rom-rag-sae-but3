@@ -14,4 +14,7 @@ rootRouter.use(healthRouter) // GET /health
  * GET /auth/me
  */
 rootRouter.use(authRouter)
+/**
+ * GET /library/browse
+ */
 rootRouter.use(libraryRouter)

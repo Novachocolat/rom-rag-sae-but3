@@ -13,10 +13,12 @@ export const datRomSchema = z.object({
   crc: hashSchema.optional(),
   md5: hashSchema.optional(),
   sha1: hashSchema.optional(),
+  sha256: hashSchema.optional(),
+  status: z.string().optional(), // e.g. "verified", "baddump"
 })
 
 export const datGameSchema = z.object({
-  name: z.string(),
+  name: z.string(), // Internal No-Intro ID for `gameExternalId`
   description: z.string().optional(),
   cloneofid: z.string().optional(), // Always as a string
   // Must always be an array even with only one category

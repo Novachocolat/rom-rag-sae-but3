@@ -1,3 +1,6 @@
+// Fixed per review: removed dead TECH_FLAGS branch (duplicate of fallback),
+// replaced generic extension regex with an explicit ROM extension allowlist.
+
 export interface NormalizedTitle {
   baseTitle: string
   region: string | null
@@ -66,15 +69,41 @@ const LANGUAGE_CODES = new Set([
   'uk',
 ])
 
-const TECH_FLAGS = new Set([
-  'sgb enhanced',
-  'cgb+sgb enhanced',
-  'gb compatible',
-])
 // Regular expressions to match revision tags
 const REVISION_REGEX = /^rev(?:ision)?\.?\s*([0-9]+|[a-z])$/i
 const SPECIAL_REVISION_REGEX =
   /^(beta|proto|prototype|demo|sample|unl|unlicensed)(\s*\d+)?$/i
+
+// Known ROM/archive extensions to strip from a file name
+const ROM_EXTENSIONS = new Set([
+  'nes',
+  'sfc',
+  'smc',
+  'gb',
+  'gbc',
+  'gba',
+  'n64',
+  'z64',
+  'v64',
+  'md',
+  'gen',
+  'bin',
+  'iso',
+  'cue',
+  'chd',
+  'sms',
+  'gg',
+  'pce',
+  'ngp',
+  'ngc',
+  'ws',
+  'wsc',
+  'zip',
+  '7z',
+  'rar',
+])
+
+const EXTENSION_REGEX = /\.([a-z0-9]{1,4})\s*$/i
 
 export function normalizeTitle(fileName: string): NormalizedTitle {
   let working = fileName.replace(/_/g, ' ')
@@ -86,7 +115,13 @@ export function normalizeTitle(fileName: string): NormalizedTitle {
     return ' '
   })
 
-  working = working.replace(/\.[a-z0-9]{1,4}\s*$/i, '')
+  const extensionMatch = EXTENSION_REGEX.exec(working)
+  if (
+    extensionMatch?.[1] &&
+    ROM_EXTENSIONS.has(extensionMatch[1].toLowerCase())
+  ) {
+    working = working.slice(0, extensionMatch.index)
+  }
 
   let region: string | null = null
   const languages: string[] = []
@@ -120,11 +155,6 @@ export function normalizeTitle(fileName: string): NormalizedTitle {
 
     if (REVISION_REGEX.test(tag) || SPECIAL_REVISION_REGEX.test(tag)) {
       revision = revision ?? tag
-      continue
-    }
-
-    if (TECH_FLAGS.has(tag.toLowerCase())) {
-      flags.push(tag)
       continue
     }
 

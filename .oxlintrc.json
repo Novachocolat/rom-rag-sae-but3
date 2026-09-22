@@ -11,7 +11,8 @@
   "rules": {
     "no-console": "off",
     "typescript/no-explicit-any": "error",
-    "import/no-unassigned-import": "off"
+    "import/no-unassigned-import": "off",
+    "no-async-endpoint-handlers": "off"
   },
   "overrides": [
     {

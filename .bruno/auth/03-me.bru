@@ -1,0 +1,22 @@
+meta {
+  name: 03 me (with cookie)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/auth/me
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.email: eq {{testEmail}}
+}
+
+tests {
+  test("never returns the password hash", function () {
+    expect(JSON.stringify(res.getBody())).to.not.include("passwordHash");
+  });
+}

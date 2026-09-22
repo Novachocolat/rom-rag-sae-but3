@@ -46,6 +46,13 @@ export function errorMiddleware(
       statusCode = 404
       code = 'NOT_FOUND'
       message = 'La ressource demandée est introuvable'
+      details = prismaErr.meta
+    } else if (prismaErr.code === 'P2003') {
+      statusCode = 409
+      code = 'FOREIGN_KEY_CONSTRAINT'
+      message =
+        'La ressource est référencée ailleurs et ne peut pas être supprimé'
+      details = prismaErr.meta
     }
   }
 

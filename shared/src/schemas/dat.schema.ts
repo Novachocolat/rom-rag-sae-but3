@@ -18,7 +18,8 @@ export const datRomSchema = z.object({
 })
 
 export const datGameSchema = z.object({
-  name: z.string(), // Internal No-Intro ID for `gameExternalId`
+  id: z.string(), // Internal No-Intro ID for `gameExternalId`
+  name: z.string(),
   description: z.string().optional(),
   cloneofid: z.string().optional(), // Always as a string
   // Must always be an array even with only one category

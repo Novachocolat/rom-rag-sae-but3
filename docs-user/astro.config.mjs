@@ -4,7 +4,7 @@ import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
 
 // In this npm-workspaces monorepo, the root node_modules hoists an older
-// `cookie` that shadows the one astro itself depends on when its build resolves 
+// `cookie` that shadows the one astro itself depends on when its build resolves
 // a bare `cookie` import from outside astro/node_modules/.
 const astroDir = new URL('.', import.meta.resolve('astro/package.json'))
 const astroCookie = fileURLToPath(new URL('node_modules/cookie', astroDir))

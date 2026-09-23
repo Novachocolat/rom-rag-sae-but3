@@ -1,0 +1,41 @@
+meta {
+  name: 01 signup
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/signup
+  body: json
+  auth: none
+}
+
+script:pre-request {
+  // Unique email per run, so the whole folder can be re-run without
+  // manually clearing a previous test user first.
+  bru.setVar("testEmail", `bruno.tester+${Date.now()}@example.com`);
+}
+
+body:json {
+  {
+    "email": "{{testEmail}}",
+    "password": "correct horse battery staple",
+    "displayName": "Bruno Tester"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.email: eq {{testEmail}}
+  res.body.displayName: eq Bruno Tester
+}
+
+tests {
+  test("sets a session cookie", function () {
+    expect(res.getHeader("set-cookie")).to.exist;
+  });
+
+  test("never returns the password hash", function () {
+    expect(JSON.stringify(res.getBody())).to.not.include("passwordHash");
+  });
+}

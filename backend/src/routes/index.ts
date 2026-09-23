@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { authRouter } from './auth.routes.js'
 import { healthRouter } from './health.routes.js'
 import { datRouter } from './dat.routes.js'
 
@@ -12,3 +13,10 @@ rootRouter.use(healthRouter) // GET /health
  * DELETE /api/dat/:id
  */
 rootRouter.use(datRouter)
+/**
+ * POST /auth/signup
+ * POST /auth/login
+ * POST /auth/logout
+ * GET /auth/me
+ */
+rootRouter.use(authRouter)

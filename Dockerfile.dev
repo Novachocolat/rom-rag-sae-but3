@@ -9,6 +9,7 @@ COPY package.json package-lock.json ./
 COPY shared/package.json shared/
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
+COPY docs-user/package.json docs-user/
 
 RUN npm ci --ignore-scripts
 
@@ -19,6 +20,6 @@ COPY . .
 RUN npm run build -w @repo/shared \
  && npm run db:generate -w @repo/backend
 
-EXPOSE 3000 5173
+EXPOSE 3000 5173 4321
 
 CMD ["npm", "run", "dev", "-w", "@repo/backend"]

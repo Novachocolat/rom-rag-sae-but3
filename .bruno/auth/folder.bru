@@ -1,0 +1,16 @@
+meta {
+  name: auth
+}
+
+docs {
+  # Auth flow (US-1.4)
+
+  Run with "Run Folder" so requests execute in order — the session cookie
+  set by 01-signup carries over to the requests that need it (Bruno keeps a
+  cookie jar per domain). Requires `npm run docker:dev` running locally.
+
+  01 signup -> 02 signup rejects the same email -> 03 me works ->
+  04 logout -> 05 me fails (session actually deleted) -> 06 login ->
+  07 login rejects a wrong password -> 08 login rejects an unknown email
+  the same way (no account enumeration).
+}

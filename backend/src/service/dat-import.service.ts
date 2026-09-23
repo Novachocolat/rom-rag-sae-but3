@@ -90,7 +90,7 @@ export async function importDatFile(fileName: string) {
     )
   }
 
-  // 2. parseDatXml throws a ZodError if the XML is rejected
+  // 2. parseDatXml throws a ZodError if the XML is malformed
   const { header, entries } = parseDatXml(buffer.toString('utf-8'))
   const platform = await resolvePlatform(header.name)
 

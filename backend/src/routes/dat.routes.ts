@@ -33,7 +33,7 @@ datRouter.post(
   },
 )
 
-datRouter.post(
+datRouter.delete(
   '/dat/:id',
   validate({ params: idParamsSchema }),
   async (req, res) => {

@@ -37,6 +37,7 @@ export function errorMiddleware(
   } else if (err && typeof err === 'object' && 'code' in err) {
     const prismaErr = err as PrismaError
 
+    // Handles Prisma errors
     if (prismaErr.code === 'P2002') {
       statusCode = 409
       code = 'CONFLICT'

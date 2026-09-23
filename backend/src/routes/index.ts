@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { authRouter } from './auth.routes.js'
 import { healthRouter } from './health.routes.js'
+import { libraryRouter } from './library.routes.js'
 import { datRouter } from './dat.routes.js'
 
 // Barrel file to exports all routes
@@ -20,3 +21,7 @@ rootRouter.use(datRouter)
  * GET /auth/me
  */
 rootRouter.use(authRouter)
+/**
+ * GET /library/browse
+ */
+rootRouter.use(libraryRouter)

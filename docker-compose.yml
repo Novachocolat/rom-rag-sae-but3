@@ -1,6 +1,5 @@
 name: rom-rag-sae-but3
 
-# One dev image for the three Node services; only the command differs
 x-dev-image: &dev-image
   image: rom-rag-sae-but3-dev:local
   build:
@@ -33,6 +32,7 @@ x-dev-env: &dev-env
   AI_CONFIDENCE_THRESHOLD: ${AI_CONFIDENCE_THRESHOLD}
   POSTGRES_PORT: ${POSTGRES_PORT:-5433}
   FRONTEND_PORT: ${FRONTEND_PORT:-5173}
+  DOCS_USER_PORT: ${DOCS_USER_PORT:-4321}
 
 services:
   postgres:
@@ -126,6 +126,22 @@ services:
       CHOKIDAR_INTERVAL: '300'
     ports:
       - '${FRONTEND_PORT:-5173}:5173'
+    volumes: *dev-volumes
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # User-facing Astro Starlight documentation site (see ADR-013)
+  docs-user:
+    <<: *dev-image
+    command: npm run dev -w @repo/docs-user
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: 'true'
+      CHOKIDAR_INTERVAL: '300'
+    ports:
+      - '${DOCS_USER_PORT:-4321}:4321'
     volumes: *dev-volumes
     depends_on:
       init:

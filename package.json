@@ -9,7 +9,8 @@
   "workspaces": [
     "shared",
     "backend",
-    "frontend"
+    "frontend",
+    "docs-user"
   ],
   "scripts": {
     "prepare": "husky",
@@ -22,10 +23,11 @@
     "build": "npm run build --workspaces --if-present",
     "build:shared": "npm run build -w @repo/shared",
     "test": "npm run test --workspaces --if-present",
-    "dev": "npm run build:shared && concurrently -k -n shared,backend,frontend -c blue,green,magenta \"npm:dev:shared\" \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev": "npm run build:shared && concurrently -k -n shared,backend,frontend,docs-user -c blue,green,magenta,yellow \"npm:dev:shared\" \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:docs-user\"",
     "dev:shared": "npm run dev -w @repo/shared",
     "dev:backend": "npm run dev -w @repo/backend",
     "dev:frontend": "npm run dev -w @repo/frontend",
+    "dev:docs-user": "npm run dev -w @repo/docs-user",
     "db:generate": "npm run db:generate -w @repo/backend",
     "db:migrate": "npm run db:migrate -w @repo/backend",
     "db:seed": "npm run db:seed -w @repo/backend",

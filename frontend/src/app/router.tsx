@@ -9,8 +9,8 @@ import { SettingsPage } from '@/app/components/pages/SettingsPage'
 // Centralizes routing
 export const router = createBrowserRouter([
   // Public routes
-  { path: '/inscription', element: <SignupPage /> },
-  { path: '/connexion', element: <LoginPage /> },
+  { path: '/signup', element: <SignupPage /> },
+  { path: '/login', element: <LoginPage /> },
 
   // Protected routes
   {
@@ -20,7 +20,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: '/', element: <App /> },
-          { path: '/parametres', element: <SettingsPage /> },
+          { path: '/settings', element: <SettingsPage /> },
         ],
       },
     ],

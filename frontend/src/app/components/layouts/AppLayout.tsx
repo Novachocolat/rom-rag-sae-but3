@@ -13,7 +13,7 @@ import {
 // Declares navigation items
 const NAV_ITEMS = [
   { to: '/', label: 'Bibliothèque', icon: LayoutGrid },
-  { to: '/parametres', label: 'Paramètres', icon: Settings },
+  { to: '/settings', label: 'Paramètres', icon: Settings },
 ]
 
 export function AppLayout() {
@@ -69,7 +69,7 @@ export function AppLayout() {
               <DropdownMenuItem
                 onClick={() => {
                   logout.mutate(undefined, {
-                    onSuccess: () => navigate('/connexion', { replace: true }),
+                    onSuccess: () => navigate('/login', { replace: true }),
                   })
                 }}
               >

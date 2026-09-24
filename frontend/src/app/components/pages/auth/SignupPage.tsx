@@ -136,7 +136,7 @@ export function SignupPage() {
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Déjà un compte ?{' '}
             <Link
-              to="/connexion"
+              to="/login"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               Se connecter

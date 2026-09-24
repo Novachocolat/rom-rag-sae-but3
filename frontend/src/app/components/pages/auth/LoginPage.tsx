@@ -113,7 +113,7 @@ export default function LoginPage() {
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Pas encore de compte ?{' '}
             <Link
-              to="/inscription"
+              to="/signup"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               Créer un compte

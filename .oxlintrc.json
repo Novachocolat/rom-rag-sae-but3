@@ -6,7 +6,7 @@
     "**/dist/**",
     "**/node_modules/**",
     "backend/src/generated/**",
-    "frontend/src/components/ui/**"
+    "frontend/src/app/components/ui/**"
   ],
   "rules": {
     "no-console": "off",

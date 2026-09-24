@@ -39,6 +39,9 @@ file rather than inventing a new pattern.
 - Types/interfaces: `PascalCase`
 - Zod schemas: `xSchema`, inferred type `X` (e.g. `healthSchema`)
 
+> Frontend URLs are in French, using small caps and preferably nouns (e.g.
+> `/connexion`, `/parametres`), but backend endpoints stay in English.
+
 ## Project structure
 
 - `shared/` — Zod schemas and types consumed by both `frontend` and `backend`
@@ -54,6 +57,19 @@ file rather than inventing a new pattern.
 - `backend/src/routes` — Express route handlers; delegate to `service/`.
 - `frontend/src/components/ui` — shadcn-generated components, not hand-edited
   (regenerate via `npx shadcn add`).
+
+## Imports
+
+Use `@/` to import a frontend or backend modules. e.g.: if you import a
+component from `/ui` into a `.tsx` file, use: `import { MyComponent } from
+'@/app/components/ui/mycomponent'
+
+Use `@repo/shared/{schemas, types}` to import a shared schemas or types. You do
+not need to import a specific file, because the `index.ts` (barrel file) already
+does it automatically.
+
+> Backend files must be imported with their extension (preferably `.js` to avoid
+> issues).
 
 ## Comments and documentation
 

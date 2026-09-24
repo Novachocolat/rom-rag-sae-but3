@@ -39,9 +39,6 @@ file rather than inventing a new pattern.
 - Types/interfaces: `PascalCase`
 - Zod schemas: `xSchema`, inferred type `X` (e.g. `healthSchema`)
 
-> Frontend URLs are in French, using small caps and preferably nouns (e.g.
-> `/connexion`, `/parametres`), but backend endpoints stay in English.
-
 ## Project structure
 
 - `shared/` — Zod schemas and types consumed by both `frontend` and `backend`

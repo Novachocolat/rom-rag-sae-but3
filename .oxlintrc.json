@@ -6,6 +6,7 @@
     "**/dist/**",
     "**/node_modules/**",
     "backend/src/generated/**",
+    "docs/user/.astro/**",
     "frontend/src/app/components/ui/**"
   ],
   "rules": {

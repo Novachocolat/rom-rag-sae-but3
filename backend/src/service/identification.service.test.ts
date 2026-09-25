@@ -1,6 +1,20 @@
-import { describe, expect, it, vi } from 'vitest'
+import { randomUUID } from 'node:crypto'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
+import { redis } from '../lib/redis.js'
 import {
   identifyRom,
+  initProgress,
+  updateProgress,
+  getProgress,
+  finishProgress,
   type DatEntry,
   type DatLookup,
   type RomCandidate,
@@ -146,5 +160,106 @@ describe('identifyRom', () => {
 
     expect(lookup.findBySha1Data).not.toHaveBeenCalled()
     expect(lookup.findByMd5Data).not.toHaveBeenCalled()
+  })
+})
+
+// --- Redis-backed scan progress state --------------------------------------
+// Integration tests: run against the real Redis configured in
+// vitest.config.ts (REDIS_URL). Requires `docker compose up -d redis`.
+
+describe('scan progress (Redis)', () => {
+  const jobId = `test-job-${randomUUID()}`
+
+  beforeAll(async () => {
+    if (redis.status === 'wait') await redis.connect()
+  })
+
+  afterEach(async () => {
+    await redis.del(`scan:${jobId}`)
+  })
+
+  afterAll(async () => {
+    await redis.quit()
+  })
+
+  it('initProgress writes the initial state with an EX ttl', async () => {
+    const progress = await initProgress(redis, jobId, 10)
+
+    expect(progress.jobId).toBe(jobId)
+    expect(progress.status).toBe('RUNNING')
+    expect(progress.totalFiles).toBe(10)
+    expect(progress.processedFiles).toBe(0)
+
+    const ttl = await redis.ttl(`scan:${jobId}`)
+    expect(ttl).toBeGreaterThan(0)
+    expect(ttl).toBeLessThanOrEqual(6 * 60 * 60)
+  })
+
+  it('getProgress returns null for an unknown jobId', async () => {
+    const progress = await getProgress(redis, `unknown-${randomUUID()}`)
+    expect(progress).toBeNull()
+  })
+
+  it('getProgress returns what initProgress wrote', async () => {
+    await initProgress(redis, jobId, 5)
+    const progress = await getProgress(redis, jobId)
+
+    expect(progress?.totalFiles).toBe(5)
+    expect(progress?.status).toBe('RUNNING')
+  })
+
+  it('updateProgress with force:true writes immediately', async () => {
+    await initProgress(redis, jobId, 5)
+    await updateProgress(
+      redis,
+      jobId,
+      { processedFiles: 3, current: 'game.nes' },
+      { force: true },
+    )
+
+    const progress = await getProgress(redis, jobId)
+    expect(progress?.processedFiles).toBe(3)
+    expect(progress?.current).toBe('game.nes')
+  })
+
+  it('updateProgress is throttled: a burst of calls does not write every time', async () => {
+    await initProgress(redis, jobId, 100)
+
+    // Fire many updates back to back without `force`; the throttle should
+    // collapse most of them into a single write (by count, since elapsed
+    // time is ~0ms in a tight loop).
+    for (let i = 1; i <= 5; i++) {
+      await updateProgress(redis, jobId, { processedFiles: i })
+    }
+
+    const progress = await getProgress(redis, jobId)
+    // None of the 5 calls should have reached the "every 25 files or 500ms"
+    // threshold, so the state should still show 0 processed files.
+    expect(progress?.processedFiles).toBe(0)
+  })
+
+  it('finishProgress sets the final status and clears `current`', async () => {
+    await initProgress(redis, jobId, 5)
+    await updateProgress(
+      redis,
+      jobId,
+      { processedFiles: 5, current: 'last.nes' },
+      { force: true },
+    )
+
+    const finished = await finishProgress(redis, jobId, 'DONE')
+
+    expect(finished?.status).toBe('DONE')
+    expect(finished?.current).toBeNull()
+    expect(finished?.finishedAt).toBeTruthy()
+  })
+
+  it('finishProgress returns null for an unknown jobId', async () => {
+    const result = await finishProgress(
+      redis,
+      `unknown-${randomUUID()}`,
+      'DONE',
+    )
+    expect(result).toBeNull()
   })
 })

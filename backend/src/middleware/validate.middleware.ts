@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import type { ParamsDictionary, Query } from 'express-serve-static-core'
+import type { ParamsDictionary } from 'express-serve-static-core'
 import { z } from 'zod'
 
 interface ValidationSchemas {
@@ -22,7 +22,15 @@ export function validate(schemas: ValidationSchemas) {
         )) as ParamsDictionary
       }
       if (schemas.query) {
-        req.query = (await schemas.query.parseAsync(req.query)) as Query
+        const parsed = await schemas.query.parseAsync(req.query)
+        // Express 5 makes `req.query` a getter-only property (derived from
+        // req.url), so it can no longer be reassigned directly.
+        Object.defineProperty(req, 'query', {
+          value: parsed,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        })
       }
       if (schemas.body) {
         req.body = await schemas.body.parseAsync(req.body)

@@ -9,7 +9,7 @@ COPY package.json package-lock.json ./
 COPY shared/package.json shared/
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
-COPY docs-user/package.json docs-user/
+COPY docs/user/package.json docs/user/
 
 RUN npm ci --ignore-scripts
 

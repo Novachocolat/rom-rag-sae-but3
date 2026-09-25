@@ -5,7 +5,7 @@ title: 'MIYACO-XXX: Issue title'
 <!-- The issue number must be increased each time a new issue is opened -->
 
 <!-- This title must always be the same as the Issue title on GitHub -->
-<!-- e.g. MIYACO-001: filesystem.storage tests fail on Windows (path separator + symlink setup) -->
+<!-- e.g. MIYACO-001: filesystem.storage tests fail on Windows (path separator + symlink setup) -->*
 
 # Issue title
 

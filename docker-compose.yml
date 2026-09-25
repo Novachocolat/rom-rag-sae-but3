@@ -132,10 +132,9 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
-  # User-facing Astro Starlight documentation site (see ADR-013)
-  docs-user:
+  docs:
     <<: *dev-image
-    command: npm run dev -w @repo/docs-user
+    command: npm run dev -w @repo/docs
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: 'true'

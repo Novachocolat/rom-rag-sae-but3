@@ -46,8 +46,8 @@
   signature-verification step on top of the same lookup an opaque token already
   needs. A logout, a password change, or banning a user takes effect instantly
   with a Redis `DEL`; none of those are as immediate with a bare JWT.
-- **No key rotation to manage.** Signing/verifying JWTs means owning a secret
-  (or key pair) with a rotation policy, versioned tokens during rotation, and
+- **No key rotation to manage.** Loging/verifying JWTs means owning a secret (or
+  key pair) with a rotation policy, versioned tokens during rotation, and
   clock-skew handling. An opaque token sidesteps all of it: there is no
   signature, so there is nothing to rotate.
 - **Local scope.** JWT earns its keep when multiple independently-scaled
@@ -61,9 +61,9 @@
 **Assets and risks (if any)**
 
 - Asset(s): a session can be revoked instantly and unconditionally (logout,
-  moderation, security incident); no signing secret to generate, store, or
-  rotate; the token itself leaks no information (no decodable payload) if
-  captured client-side outside the cookie jar.
+  moderation, security incident); no login secret to generate, store, or rotate;
+  the token itself leaks no information (no decodable payload) if captured
+  client-side outside the cookie jar.
 - Risk(s): every authenticated request now costs a Redis round-trip (a `GET` and
   an `EXPIRE`) instead of a local signature check — acceptable at this project's
   scale, but it would need revisiting under high request volume or multi-region

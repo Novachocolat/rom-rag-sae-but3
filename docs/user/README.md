@@ -25,13 +25,13 @@ docs/user/
 Run through Docker Compose from the repo root, same as the other services:
 
 ```
-docker compose up docs   # dev server, http://localhost:4321
+docker compose up docs   # dev server, http://localhost:4321/rom-rag-doc-utilisateur
 ```
 
 Or, from this workspace, with the monorepo's dependencies already installed:
 
-| Command           | Action                                   |
-| :---------------- | :--------------------------------------- |
-| `npm run dev`     | Start the dev server at `localhost:4321` |
-| `npm run build`   | Build the static site to `./dist/`       |
-| `npm run preview` | Preview the production build locally     |
+| Command           | Action                                                                  |
+| :---------------- | :---------------------------------------------------------------------- |
+| `npm run dev`     | Start the dev server at `http://localhost:4321/rom-rag-doc-utilisateur` |
+| `npm run build`   | Build the static site to `./dist/`                                      |
+| `npm run preview` | Preview the production build locally                                    |

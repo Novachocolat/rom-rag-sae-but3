@@ -2,7 +2,7 @@
 
 User-facing documentation site for ROM RAG, built with
 [Astro Starlight](https://starlight.astro.build/). See
-[ADR-013](../docs/adr/013-astro-starlight.md) for why this stack was chosen.
+[ADR-013](../docs/adr/astro-starlight.md) for why this stack was chosen.
 
 This is a workspace from [`docs/`](../docs), which holds the contributor-facing
 technical documentation (architecture, ADRs, ...).

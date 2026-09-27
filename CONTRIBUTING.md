@@ -94,6 +94,7 @@ Notion / GitHub  →  issue  →  branch  →  PR  →  review  →  merge  → 
 
 - `main` — production-ready, protected.
 - `dev` — integration branch, protected. All feature work merges here first.
+- `docs/deploy` — user manual, automatically deployed online.
 - Feature branches: `<type>/<short-description>`, e.g. `feat/user-auth`,
   `fix/redis-reconnect`. Type matches the Conventional Commits types below.
 
@@ -208,14 +209,17 @@ npm test
 A **codeowner** must approve your PR. You must set who can review and a GitHub
 label.
 
-Use the PR template (`.github/PULL_REQUEST_TEMPLATE.md`) but do not delete its
-sections.
+Use the PR template (`.github/PULL_REQUEST_TEMPLATE.md`) and Issue template
+(`.github/ISSUE_TEMPLATE.md`) but do not delete their sections. Comments can be
+removed though.
 
 ## Merging
 
 All commits from a merge **must be squashed** to not mess the Git history.
 
 The title of **Pull Requests** must follow **Conventional Commits** (see above).
+
+**Only a single `package-lockfile.json` must be generated, at root.**
 
 > The main branch is only merged when a sprint is completed. Never before.
 

@@ -1,9 +1,32 @@
 import { Router } from 'express'
+import { authRouter } from './auth.routes.js'
 import { healthRouter } from './health.routes.js'
 import { scanRouter } from './scan.routes.js'
+import { libraryRouter } from './library.routes.js'
+import { datRouter } from './dat.routes.js'
 
 // Barrel file to exports all routes
 export const rootRouter = Router()
 
-rootRouter.use(healthRouter)
-rootRouter.use('/api', scanRouter)
+rootRouter.use(healthRouter) // GET /health
+/**
+ * GET /api/dat
+ * POST /api/dat/import
+ * DELETE /api/dat/:id
+ */
+rootRouter.use(datRouter)
+/**
+ * POST /auth/signup
+ * POST /auth/login
+ * POST /auth/logout
+ * GET /auth/me
+ */
+rootRouter.use(authRouter)
+/**
+ * GET /library/browse
+ */
+rootRouter.use(libraryRouter)
+/**
+ * TODO: Add endpoints here
+*/
+rootRouter.use(scanRouter)

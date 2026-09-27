@@ -24,9 +24,9 @@ commit!**_
 
 - Add `AppLayout` (sidebar + header with Ollama status and logged-in user) and
   `HealthPanel` UI component polling `GET /api/health` every 30s
-- Add frontend auth hooks: `useMe`, `useSignin`, `useSignup`, `useLogout` (React
+- Add frontend auth hooks: `useMe`, `useLogin`, `useSignup`, `useLogout` (React
   Query, `/auth/*` routes)
-- Add `router.tsx` with public routes (`/signup`, `/signin`), a `ProtectedRoute`
+- Add `router.tsx` with public routes (`/signup`, `/login`), a `ProtectedRoute`
   guard, and a catch-all redirect to `/`
 - Add `queryClient` (React Query) and `store` (Redux Toolkit, empty reducer for
   now) providers

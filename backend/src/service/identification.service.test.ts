@@ -163,10 +163,6 @@ describe('identifyRom', () => {
   })
 })
 
-// --- Redis-backed scan progress state --------------------------------------
-// Integration tests: run against the real Redis configured in
-// vitest.config.ts (REDIS_URL). Requires `docker compose up -d redis`.
-
 describe('scan progress (Redis)', () => {
   const jobId = `test-job-${randomUUID()}`
 

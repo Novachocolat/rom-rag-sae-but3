@@ -23,8 +23,6 @@ export function validate(schemas: ValidationSchemas) {
       }
       if (schemas.query) {
         const parsed = await schemas.query.parseAsync(req.query)
-        // Express 5 makes `req.query` a getter-only property (derived from
-        // req.url), so it can no longer be reassigned directly.
         Object.defineProperty(req, 'query', {
           value: parsed,
           writable: true,

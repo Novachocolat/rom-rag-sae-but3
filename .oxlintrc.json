@@ -6,12 +6,13 @@
     "**/dist/**",
     "**/node_modules/**",
     "backend/src/generated/**",
-    "frontend/src/components/ui/**"
+    "frontend/src/app/components/ui/**"
   ],
   "rules": {
     "no-console": "off",
     "typescript/no-explicit-any": "error",
-    "import/no-unassigned-import": "off"
+    "import/no-unassigned-import": "off",
+    "oxc/no-async-endpoint-handlers": "off"
   },
   "overrides": [
     {

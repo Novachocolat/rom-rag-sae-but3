@@ -1,5 +1,9 @@
-// backend/src/service/identification.service.ts
-import { Redis } from 'ioredis'
+import type { ScanProgress, ScanStatus } from '@repo/shared/types'
+import {
+  getScanProgress,
+  saveScanProgress,
+  type StoredScanProgress,
+} from '../storage/scan-progress.storage.js'
 
 export type IdentificationSource =
   | 'DAT_SHA1'
@@ -20,6 +24,7 @@ export interface RomCandidate {
 }
 
 export interface DatEntry {
+  id?: string
   name: string
   sha1: string
   md5: string
@@ -47,6 +52,31 @@ const CONFIDENCE: Record<IdentificationSource, number> = {
   DAT_MD5_DATA: 0.96,
   DAT_NAME: 0.8,
   UNIDENTIFIED: 0,
+}
+
+export type ScanCounters = Pick<
+  ScanProgress,
+  | 'processedFiles'
+  | 'identifiedCount'
+  | 'unidentifiedCount'
+  | 'errorCount'
+  | 'current'
+>
+
+export type FinalScanStatus = Extract<
+  ScanStatus,
+  'COMPLETED' | 'FAILED' | 'CANCELLED'
+>
+
+// Writing to Redis on every file would make the scan slower than the hashing
+// itself: updates are flushed every N files or every 500 ms, whichever first.
+const PROGRESS_FLUSH_EVERY_FILES = 25
+const PROGRESS_FLUSH_INTERVAL_MS = 500
+
+interface ProgressThrottle {
+  progress: StoredScanProgress
+  pendingUpdates: number
+  lastFlushAt: number
 }
 
 // Identification of ROM candidate in a DAT ---
@@ -90,54 +120,17 @@ function buildResult(
   return { source, confidence: CONFIDENCE[source], entry, candidate }
 }
 
-// Key "scan:<jobId>", JSON value, EX of a few hours.
-// updateProgress is throttled: we don't write to Redis on every single file,
-// but every N files OR every 500ms (otherwise the scan becomes slower than
-// the hashing itself).
+const progressThrottles = new Map<string, ProgressThrottle>()
 
-export type ScanStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'ERROR' | 'CANCELLED'
-
-export interface ScanProgress {
-  jobId: string
-  status: ScanStatus
-  totalFiles: number
-  processedFiles: number
-  identifiedCount: number
-  unidentifiedCount: number
-  errorCount: number
-  current: string | null
-  startedAt: string
-  updatedAt: string
-  finishedAt: string | null
-  errorMessage: string | null
-}
-
-const SCAN_PROGRESS_TTL_SECONDS = 6 * 60 * 60
-const SCAN_PROGRESS_THROTTLE_MS = 500
-const SCAN_PROGRESS_THROTTLE_EVERY_N_FILES = 25
-
-function scanProgressKey(jobId: string): string {
-  return `scan:${jobId}`
-}
-
-// Throttle state is kept in memory, not in Redis, because it's only relevant
-const scanProgressThrottleState = new Map<
-  string,
-  { at: number; count: number }
->()
-
-function parseScanProgress(raw: string): ScanProgress {
-  return JSON.parse(raw) as ScanProgress
-}
-
+// Starts tracking a scan in Redis as RUNNING, every counter at zero
 export async function initProgress(
-  redis: Redis,
   jobId: string,
+  userId: string,
   totalFiles: number,
-): Promise<ScanProgress> {
-  const now = new Date().toISOString()
-  const progress: ScanProgress = {
+): Promise<void> {
+  const progress: StoredScanProgress = {
     jobId,
+    userId,
     status: 'RUNNING',
     totalFiles,
     processedFiles: 0,
@@ -145,103 +138,61 @@ export async function initProgress(
     unidentifiedCount: 0,
     errorCount: 0,
     current: null,
-    startedAt: now,
-    updatedAt: now,
-    finishedAt: null,
     errorMessage: null,
   }
-  scanProgressThrottleState.set(jobId, { at: Date.now(), count: 0 })
-  await redis.set(
-    scanProgressKey(jobId),
-    JSON.stringify(progress),
-    'EX',
-    SCAN_PROGRESS_TTL_SECONDS,
-  )
-  return progress
+
+  progressThrottles.set(jobId, {
+    progress,
+    pendingUpdates: 0,
+    lastFlushAt: Date.now(),
+  })
+  await saveScanProgress(progress)
 }
 
+/**
+ * Merges `counters` into the scan's progress in memory; only writes it to Redis
+ * when the throttle allows it (`finishProgress` always writes the last state)
+ */
 export async function updateProgress(
-  redis: Redis,
   jobId: string,
-  patch: Partial<
-    Pick<
-      ScanProgress,
-      | 'processedFiles'
-      | 'identifiedCount'
-      | 'unidentifiedCount'
-      | 'errorCount'
-      | 'current'
-    >
-  >,
-  options: { force?: boolean } = {},
+  counters: ScanCounters,
 ): Promise<void> {
-  const state = scanProgressThrottleState.get(jobId) ?? { at: 0, count: 0 }
-  state.count += 1
+  const throttle = progressThrottles.get(jobId)
+  if (!throttle) return
+
+  throttle.progress = { ...throttle.progress, ...counters }
+  throttle.pendingUpdates += 1
 
   const now = Date.now()
-  const elapsed = now - state.at
-  const shouldWrite =
-    options.force ||
-    elapsed >= SCAN_PROGRESS_THROTTLE_MS ||
-    state.count >= SCAN_PROGRESS_THROTTLE_EVERY_N_FILES
+  const shouldFlush =
+    throttle.pendingUpdates >= PROGRESS_FLUSH_EVERY_FILES ||
+    now - throttle.lastFlushAt >= PROGRESS_FLUSH_INTERVAL_MS
+  if (!shouldFlush) return
 
-  if (!shouldWrite) {
-    scanProgressThrottleState.set(jobId, state)
-    return
-  }
-
-  const raw = await redis.get(scanProgressKey(jobId))
-  if (!raw) return // job expired or was cancelled in the meantime
-
-  const current = parseScanProgress(raw)
-  const updated: ScanProgress = {
-    ...current,
-    ...patch,
-    updatedAt: new Date().toISOString(),
-  }
-
-  await redis.set(
-    scanProgressKey(jobId),
-    JSON.stringify(updated),
-    'EX',
-    SCAN_PROGRESS_TTL_SECONDS,
-  )
-  scanProgressThrottleState.set(jobId, { at: now, count: 0 })
+  throttle.pendingUpdates = 0
+  throttle.lastFlushAt = now
+  await saveScanProgress(throttle.progress)
 }
 
-export async function getProgress(
-  redis: Redis,
-  jobId: string,
-): Promise<ScanProgress | null> {
-  const raw = await redis.get(scanProgressKey(jobId))
-  return raw ? parseScanProgress(raw) : null
+// Reads a scan's progress from Redis, null once expired or never started
+export function getProgress(jobId: string): Promise<StoredScanProgress | null> {
+  return getScanProgress(jobId)
 }
 
+// Writes the final status to Redis and stops tracking the scan in memory
 export async function finishProgress(
-  redis: Redis,
   jobId: string,
-  status: Extract<ScanStatus, 'DONE' | 'ERROR' | 'CANCELLED'>,
-  errorMessage?: string,
-): Promise<ScanProgress | null> {
-  const raw = await redis.get(scanProgressKey(jobId))
-  if (!raw) return null
+  status: FinalScanStatus,
+  errorMessage: string | null = null,
+): Promise<void> {
+  const throttle = progressThrottles.get(jobId)
+  if (!throttle) return
 
-  const current = parseScanProgress(raw)
-  const updated: ScanProgress = {
-    ...current,
+  progressThrottles.delete(jobId)
+  await saveScanProgress({
+    ...throttle.progress,
     status,
     current: null,
-    updatedAt: new Date().toISOString(),
-    finishedAt: new Date().toISOString(),
-    errorMessage: errorMessage ?? null,
-  }
-
-  await redis.set(
-    scanProgressKey(jobId),
-    JSON.stringify(updated),
-    'EX',
-    SCAN_PROGRESS_TTL_SECONDS,
-  )
-  scanProgressThrottleState.delete(jobId)
-  return updated
+    errorMessage,
+  })
 }

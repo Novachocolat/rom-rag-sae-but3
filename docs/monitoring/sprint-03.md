@@ -59,7 +59,7 @@ grisée.
 
 ### DoR
 
-- L'US-3.1 expose `generateJson` : sans elle, aucun prompt n'est exécutable.
+- L'US3.1 expose `generateJson` : sans elle, aucun prompt n'est exécutable.
 
 ### DoD
 
@@ -79,8 +79,8 @@ grisée.
 
 ### DoR
 
-- Les US-3.1 et 3.2 sont livrées (client et prompts).
-- L'US-2.3 est livrée : sans cascade déterministe, on ne sait pas quelles ROMs
+- Les US3.1 et 3.2 sont livrées (client et prompts).
+- L'US2.3 est livrée : sans cascade déterministe, on ne sait pas quelles ROMs
   sont légitimement `UNIDENTIFIED`, et l'IA serait appelée sur tout.
 - Le jeu de test contient 2 à 3 fichiers volontairement hors catalogue, sans
   quoi cette US n'a rien à démontrer.
@@ -108,7 +108,7 @@ grisée.
 
 ### DoR
 
-- L'US-3.3 expose ses quatre routes, et l'US-3.1 la sonde de disponibilité.
+- L'US3.3 expose ses quatre routes, et l'US3.1 la sonde de disponibilité.
 - Les composants shadcn `badge`, `tooltip`, `card`, `dialog` sont générés.
 
 ### DoD

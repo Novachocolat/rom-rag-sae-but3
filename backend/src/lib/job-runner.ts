@@ -1,53 +1,37 @@
-// In-memory job registry. ADR-012: a backend restart loses running jobs —
-// acceptable for local evaluation, and why BullMQ isn't used here.
-
 import { randomUUID } from 'node:crypto'
 import { logger } from './logger.js'
 
-export type JobFn = (signal: AbortSignal) => Promise<void>
+const jobs = new Map<string, AbortController>()
 
-export type JobStatus = 'RUNNING' | 'DONE' | 'ERROR' | 'CANCELLED'
-
-interface JobEntry {
-  status: JobStatus
-  controller: AbortController
-}
-
-const jobs = new Map<string, JobEntry>()
-
-// Fire-and-forget: starts `fn`, catches rejections, returns the job id.
-export function startJob(fn: JobFn): string {
-  const id = randomUUID()
+/**
+ * Starts `fn` without awaiting it and returns its job id; a rejection is logged,
+ * never left unhandled. Pass `id` to reuse an id that is already persisted.
+ */
+export function startJob(
+  fn: (signal: AbortSignal) => Promise<unknown>,
+  id: string = randomUUID(),
+): string {
   const controller = new AbortController()
+  jobs.set(id, controller)
 
-  jobs.set(id, { status: 'RUNNING', controller })
-
-  fn(controller.signal)
-    .then(() => {
-      const entry = jobs.get(id)
-      if (entry) entry.status = 'DONE'
-    })
+  // Deferred by a microtask so a synchronous throw in `fn` is caught as well
+  Promise.resolve()
+    .then(() => fn(controller.signal))
     .catch((err: unknown) => {
-      const entry = jobs.get(id)
-      if (entry) {
-        entry.status = controller.signal.aborted ? 'CANCELLED' : 'ERROR'
-      }
-      if (!controller.signal.aborted) {
-        logger.error(`Job ${id} failed`, { err })
-      }
+      logger.error(`Job ${id} failed`, {
+        stack: err instanceof Error ? err.stack : String(err),
+      })
     })
+    .finally(() => jobs.delete(id))
 
   return id
 }
 
+// Aborts a running job; false if the id is unknown or the job already ended
 export function cancelJob(id: string): boolean {
-  const entry = jobs.get(id)
-  if (!entry || entry.status !== 'RUNNING') return false
+  const controller = jobs.get(id)
+  if (!controller) return false
 
-  entry.controller.abort()
+  controller.abort()
   return true
-}
-
-export function getJobStatus(id: string): JobStatus | null {
-  return jobs.get(id)?.status ?? null
 }

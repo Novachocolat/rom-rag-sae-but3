@@ -1,92 +1,71 @@
 import { describe, expect, it, vi } from 'vitest'
-import { startJob, cancelJob, getJobStatus } from './job-runner.js'
+import { cancelJob, startJob } from './job-runner.js'
+import { logger } from './logger.js'
 
 vi.mock('./logger.js', () => ({
-  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+  logger: { error: vi.fn() },
 }))
 
-function tick(): Promise<void> {
+function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
+// Tests for the in-memory job registry: jobs run in the background, their
+// failures are logged instead of crashing the process, and they can be aborted.
 describe('job-runner', () => {
-  it('returns a job id immediately without waiting for fn to resolve', () => {
-    let resolved = false
-    const id = startJob(async () => {
-      await new Promise((r) => setTimeout(r, 20))
-      resolved = true
-    })
+  it('returns a job id without waiting for fn to settle', () => {
+    const fn = vi.fn(() => new Promise<void>(() => {}))
 
-    expect(id).toBeTruthy()
-    expect(resolved).toBe(false)
-    expect(getJobStatus(id)).toBe('RUNNING')
+    const id = startJob(fn)
+
+    expect(id).toEqual(expect.any(String))
+    expect(fn).not.toHaveBeenCalled()
   })
 
-  it('marks the job as DONE once fn resolves', async () => {
-    const id = startJob(async () => {
-      await tick()
-    })
-
-    await tick()
-    await tick()
-
-    expect(getJobStatus(id)).toBe('DONE')
+  it('reuses the id given by the caller', () => {
+    expect(startJob(() => Promise.resolve(), 'job-42')).toBe('job-42')
   })
 
-  it('marks the job as ERROR when fn rejects', async () => {
-    const id = startJob(async () => {
-      await tick()
-      throw new Error('boom')
+  it('logs a rejection instead of leaving it unhandled', async () => {
+    const id = startJob(() => Promise.reject(new Error('boom')))
+    await flush()
+
+    expect(logger.error).toHaveBeenCalledWith(`Job ${id} failed`, {
+      stack: expect.stringContaining('boom'),
     })
-
-    await tick()
-    await tick()
-
-    expect(getJobStatus(id)).toBe('ERROR')
   })
 
-  it('does not throw an unhandled rejection when fn rejects', async () => {
-    startJob(async () => {
-      throw new Error('boom')
+  it('logs a synchronous throw as well', async () => {
+    startJob(() => {
+      throw new Error('sync boom')
     })
+    await flush()
 
-    await tick()
-    expect(true).toBe(true)
+    expect(logger.error).toHaveBeenCalledWith(expect.any(String), {
+      stack: expect.stringContaining('sync boom'),
+    })
   })
 
-  it('cancelJob aborts the signal; a cooperative fn ends as CANCELLED', async () => {
-    const id = startJob(async (signal) => {
-      await tick()
-      // A real job (e.g. runScan) checks the signal between steps and
-      // stops itself; that's simulated here by throwing on abort.
-      if (signal.aborted) throw new Error('aborted')
+  it('cancelJob aborts the signal handed to fn', async () => {
+    let received: AbortSignal | undefined
+    const id = startJob((signal) => {
+      received = signal
+      return new Promise<void>(() => {})
     })
+    await flush()
 
-    const cancelled = cancelJob(id)
-    await tick()
-    await tick()
-
-    expect(cancelled).toBe(true)
-    expect(getJobStatus(id)).toBe('CANCELLED')
+    expect(cancelJob(id)).toBe(true)
+    expect(received?.aborted).toBe(true)
   })
 
-  it('cancelJob returns false for an unknown job id', () => {
+  it('cancelJob returns false for an unknown id', () => {
     expect(cancelJob('does-not-exist')).toBe(false)
   })
 
-  it('cancelJob returns false for a job that already finished', async () => {
-    const id = startJob(async () => {
-      await tick()
-    })
-
-    await tick()
-    await tick()
-    expect(getJobStatus(id)).toBe('DONE')
+  it('cancelJob returns false once the job has ended', async () => {
+    const id = startJob(() => Promise.resolve())
+    await flush()
 
     expect(cancelJob(id)).toBe(false)
-  })
-
-  it('getJobStatus returns null for an unknown job id', () => {
-    expect(getJobStatus('does-not-exist')).toBeNull()
   })
 })

@@ -1,164 +1,156 @@
-import { randomUUID } from 'node:crypto'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import path from 'node:path'
+import { describe, expect, it, vi } from 'vitest'
 import { prisma } from '../lib/prisma.js'
 import {
-  upsertRom,
-  findRomById,
-  listRoms,
   countRomsByStatus,
   deleteMissingRoms,
+  findRomById,
+  listRoms,
+  upsertRom,
+  type UpsertRomInput,
 } from './rom.storage.js'
 
-// Integration tests: run against the real Postgres configured in
-// vitest.config.ts (DATABASE_URL). Requires `docker compose up -d postgres`.
+// Mocks Prisma dependency
+vi.mock('../lib/prisma.js', () => ({
+  prisma: {
+    rom: {
+      upsert: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
+      groupBy: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+  },
+}))
 
-let userId: string
+const upsert = vi.mocked(prisma.rom.upsert)
+const findUnique = vi.mocked(prisma.rom.findUnique)
+const findMany = vi.mocked(prisma.rom.findMany)
+const count = vi.mocked(prisma.rom.count)
+const groupBy = vi.mocked(prisma.rom.groupBy)
+const deleteMany = vi.mocked(prisma.rom.deleteMany)
 
-function baseRomInput(
-  overrides: Partial<Parameters<typeof upsertRom>[0]> = {},
-) {
-  return {
-    userId,
-    relativePath: 'game.nes',
-    fileName: 'game.nes',
-    extension: '.nes',
-    sizeBytes: 1024n,
-    md5: 'a'.repeat(32),
-    sha1: 'b'.repeat(40),
-    headerBytesSkipped: 0,
-    identificationSource: 'UNIDENTIFIED' as const,
-    ...overrides,
-  }
+const romInput: UpsertRomInput = {
+  userId: 'user-1',
+  relativePath: 'nes/game.nes',
+  fileName: 'game.nes',
+  extension: '.nes',
+  sizeBytes: 1024n,
+  md5: 'a'.repeat(32),
+  sha1: 'b'.repeat(40),
+  headerBytesSkipped: 16,
+  identificationSource: 'UNIDENTIFIED',
 }
 
-beforeAll(async () => {
-  const user = await prisma.user.create({
-    data: {
-      email: `rom-storage-test-${randomUUID()}@example.com`,
-      passwordHash: 'irrelevant',
-    },
-  })
-  userId = user.id
-})
-
-afterEach(async () => {
-  await prisma.rom.deleteMany({ where: { userId } })
-})
-
-afterAll(async () => {
-  await prisma.user.delete({ where: { id: userId } })
-  await prisma.$disconnect()
-})
-
+// Tests for the Prisma access layer for ROMs: each function must delegate
+// to the right Prisma call with the right arguments, nothing more.
 describe('rom.storage', () => {
-  it('upsertRom creates a new rom on first call', async () => {
-    const rom = await upsertRom(baseRomInput())
+  it('upsertRom keys the ROM on userId + relativePath', async () => {
+    await upsertRom(romInput)
 
-    expect(rom.id).toBeTruthy()
-    expect(rom.userId).toBe(userId)
-    expect(rom.relativePath).toBe('game.nes')
-    expect(rom.identificationSource).toBe('UNIDENTIFIED')
-  })
-
-  it('upsertRom updates the existing rom on the same userId + relativePath', async () => {
-    await upsertRom(baseRomInput({ title: 'First title' }))
-    const updated = await upsertRom(
-      baseRomInput({
-        title: 'Updated title',
-        identificationSource: 'DAT_SHA1',
-      }),
-    )
-
-    const all = await prisma.rom.findMany({ where: { userId } })
-    expect(all).toHaveLength(1)
-    expect(updated.title).toBe('Updated title')
-    expect(updated.identificationSource).toBe('DAT_SHA1')
-  })
-
-  it('findRomById returns the rom', async () => {
-    const created = await upsertRom(baseRomInput())
-    const found = await findRomById(created.id)
-
-    expect(found.id).toBe(created.id)
-  })
-
-  it('findRomById throws AppError.notFound for an unknown id', async () => {
-    await expect(findRomById(randomUUID())).rejects.toMatchObject({
-      statusCode: 404,
-      code: 'ROM_NOT_FOUND',
+    const { userId, relativePath, ...rest } = romInput
+    expect(upsert).toHaveBeenCalledWith({
+      where: { userId_relativePath: { userId, relativePath } },
+      create: romInput,
+      update: rest,
     })
   })
 
-  it('listRoms paginates and filters by userId', async () => {
-    await upsertRom(baseRomInput({ relativePath: 'a.nes', fileName: 'a.nes' }))
-    await upsertRom(baseRomInput({ relativePath: 'b.nes', fileName: 'b.nes' }))
-    await upsertRom(baseRomInput({ relativePath: 'c.nes', fileName: 'c.nes' }))
+  it('findRomById looks up by id', async () => {
+    findUnique.mockResolvedValue(null)
 
-    const page1 = await listRoms({ userId, page: 1, pageSize: 2 })
-    expect(page1.roms).toHaveLength(2)
-    expect(page1.total).toBe(3)
-
-    const page2 = await listRoms({ userId, page: 2, pageSize: 2 })
-    expect(page2.roms).toHaveLength(1)
+    await expect(findRomById('rom-1')).resolves.toBeNull()
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: 'rom-1' } })
   })
 
-  it('listRoms filters by search on title/fileName', async () => {
-    await upsertRom(
-      baseRomInput({
-        relativePath: 'zelda.nes',
-        fileName: 'zelda.nes',
-        title: 'Zelda',
-      }),
-    )
-    await upsertRom(
-      baseRomInput({
-        relativePath: 'mario.nes',
-        fileName: 'mario.nes',
-        title: 'Mario',
-      }),
-    )
+  it('listRoms paginates and applies every filter', async () => {
+    findMany.mockResolvedValue([])
+    count.mockResolvedValue(3)
 
-    const result = await listRoms({ userId, search: 'zelda' })
-    expect(result.roms).toHaveLength(1)
-    expect(result.roms[0]?.fileName).toBe('zelda.nes')
+    const result = await listRoms({
+      userId: 'user-1',
+      platformId: 'platform-1',
+      identificationSource: 'DAT_SHA1',
+      region: 'Europe',
+      search: 'zelda',
+      page: 2,
+      pageSize: 10,
+    })
+
+    const where = {
+      userId: 'user-1',
+      platformId: 'platform-1',
+      identificationSource: 'DAT_SHA1',
+      region: 'Europe',
+      OR: [
+        { title: { contains: 'zelda', mode: 'insensitive' } },
+        { fileName: { contains: 'zelda', mode: 'insensitive' } },
+      ],
+    }
+    expect(findMany).toHaveBeenCalledWith({
+      where,
+      skip: 10,
+      take: 10,
+      orderBy: { fileName: 'asc' },
+    })
+    expect(count).toHaveBeenCalledWith({ where })
+    expect(result).toEqual({ roms: [], total: 3, page: 2, pageSize: 10 })
   })
 
-  it('countRomsByStatus groups by identificationSource', async () => {
-    await upsertRom(
-      baseRomInput({ relativePath: 'a.nes', identificationSource: 'DAT_SHA1' }),
-    )
-    await upsertRom(
-      baseRomInput({
-        relativePath: 'b.nes',
-        identificationSource: 'UNIDENTIFIED',
+  it('listRoms falls back to the first page of 20', async () => {
+    findMany.mockResolvedValue([])
+    count.mockResolvedValue(0)
+
+    const result = await listRoms({ userId: 'user-1', page: 0 })
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'user-1' },
+        skip: 0,
+        take: 20,
       }),
     )
-    await upsertRom(
-      baseRomInput({
-        relativePath: 'c.nes',
-        identificationSource: 'UNIDENTIFIED',
-      }),
-    )
-
-    const counts = await countRomsByStatus(userId)
-
-    expect(counts.DAT_SHA1).toBe(1)
-    expect(counts.UNIDENTIFIED).toBe(2)
+    expect(result).toMatchObject({ page: 1, pageSize: 20 })
   })
 
-  it('deleteMissingRoms removes roms not in the keep list', async () => {
-    await upsertRom(
-      baseRomInput({ relativePath: 'keep.nes', fileName: 'keep.nes' }),
-    )
-    await upsertRom(
-      baseRomInput({ relativePath: 'remove.nes', fileName: 'remove.nes' }),
-    )
+  it('countRomsByStatus maps each group to its count', async () => {
+    // Prisma's groupBy return type is generic over its arguments: cast needed
+    groupBy.mockResolvedValue([
+      { identificationSource: 'DAT_SHA1', _count: { _all: 1 } },
+      { identificationSource: 'UNIDENTIFIED', _count: { _all: 2 } },
+    ] as never)
 
-    const deletedCount = await deleteMissingRoms(userId, ['keep.nes'])
+    await expect(countRomsByStatus('user-1')).resolves.toEqual({
+      DAT_SHA1: 1,
+      UNIDENTIFIED: 2,
+    })
+  })
 
-    expect(deletedCount).toBe(1)
-    const remaining = await prisma.rom.findMany({ where: { userId } })
-    expect(remaining).toHaveLength(1)
-    expect(remaining[0]?.relativePath).toBe('keep.nes')
+  it('deleteMissingRoms only deletes inside the scanned subtree', async () => {
+    deleteMany.mockResolvedValue({ count: 1 })
+
+    const deleted = await deleteMissingRoms('user-1', 'nes', ['nes/keep.nes'])
+
+    expect(deleted).toBe(1)
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        relativePath: {
+          notIn: ['nes/keep.nes'],
+          startsWith: `nes${path.sep}`,
+        },
+      },
+    })
+  })
+
+  it('deleteMissingRoms covers the whole library when the root is empty', async () => {
+    deleteMany.mockResolvedValue({ count: 0 })
+
+    await deleteMissingRoms('user-1', '', [])
+
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1', relativePath: { notIn: [] } },
+    })
   })
 })

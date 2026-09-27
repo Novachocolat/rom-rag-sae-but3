@@ -1,24 +1,27 @@
-import { randomUUID } from 'node:crypto'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { redis } from '../lib/redis.js'
 import {
+  finishProgress,
+  getProgress,
   identifyRom,
   initProgress,
   updateProgress,
-  getProgress,
-  finishProgress,
   type DatEntry,
   type DatLookup,
   type RomCandidate,
+  type ScanCounters,
 } from './identification.service.js'
+
+// Mocks Redis' get and set methods
+vi.mock('../lib/redis.js', () => ({
+  redis: {
+    set: vi.fn(),
+    get: vi.fn(),
+  },
+}))
+
+const set = vi.mocked(redis.set)
+const get = vi.mocked(redis.get)
 
 function makeCandidate(overrides: Partial<RomCandidate> = {}): RomCandidate {
   return {
@@ -48,7 +51,7 @@ function makeLookup(overrides: Partial<DatLookup> = {}): DatLookup {
 }
 // Tests for identifyRom function
 describe('identifyRom', () => {
-  it('retourne DAT_SHA1 en priorité même si les autres échelons matcheraient', async () => {
+  it('returns DAT_SHA1 first, even when lower tiers would also match', async () => {
     const entry = makeEntry('Match SHA1')
     const lookup = makeLookup({
       findBySha1Full: vi.fn().mockResolvedValue(entry),
@@ -63,7 +66,7 @@ describe('identifyRom', () => {
     expect(lookup.findByMd5Full).not.toHaveBeenCalled()
   })
 
-  it('retombe sur DAT_MD5 si SHA-1 fichier entier ne matche pas', async () => {
+  it('falls back to DAT_MD5 when the full-file SHA-1 does not match', async () => {
     const entry = makeEntry('Match MD5')
     const lookup = makeLookup({
       findByMd5Full: vi.fn().mockResolvedValue(entry),
@@ -75,7 +78,7 @@ describe('identifyRom', () => {
     expect(result.confidence).toBe(0.99)
   })
 
-  it("n'appelle pas les échelons données-seules si headerBytesSkipped === 0 (GB/GBC/GBA)", async () => {
+  it('skips the data-only tiers when headerBytesSkipped === 0 (GB/GBC/GBA)', async () => {
     const lookup = makeLookup()
 
     await identifyRom(makeCandidate({ headerBytesSkipped: 0 }), lookup)
@@ -84,7 +87,7 @@ describe('identifyRom', () => {
     expect(lookup.findByMd5Data).not.toHaveBeenCalled()
   })
 
-  it('évalue SHA-1 données seules quand headerBytesSkipped > 0', async () => {
+  it('checks the data-only SHA-1 when headerBytesSkipped > 0', async () => {
     const entry = makeEntry('Match SHA1 data')
     const lookup = makeLookup({
       findBySha1Data: vi.fn().mockResolvedValue(entry),
@@ -99,7 +102,7 @@ describe('identifyRom', () => {
     expect(result.confidence).toBe(0.97)
   })
 
-  it('retombe sur MD5 données seules si SHA-1 données seules ne matche pas', async () => {
+  it('falls back to the data-only MD5 when the data-only SHA-1 does not match', async () => {
     const entry = makeEntry('Match MD5 data')
     const lookup = makeLookup({
       findByMd5Data: vi.fn().mockResolvedValue(entry),
@@ -114,7 +117,7 @@ describe('identifyRom', () => {
     expect(result.confidence).toBe(0.96)
   })
 
-  it('retombe sur DAT_NAME en dernier recours avant échec', async () => {
+  it('falls back to DAT_NAME as a last resort', async () => {
     const entry = makeEntry('Match name')
     const lookup = makeLookup({
       findByNormalizedName: vi.fn().mockResolvedValue(entry),
@@ -129,7 +132,7 @@ describe('identifyRom', () => {
     expect(result.confidence).toBe(0.8)
   })
 
-  it('ne tente pas la recherche par nom si normalizedName est absent', async () => {
+  it('skips the name lookup when normalizedName is missing', async () => {
     const lookup = makeLookup()
 
     await identifyRom(makeCandidate({ normalizedName: null }), lookup)
@@ -137,7 +140,7 @@ describe('identifyRom', () => {
     expect(lookup.findByNormalizedName).not.toHaveBeenCalled()
   })
 
-  it('retourne UNIDENTIFIED si aucun échelon ne matche', async () => {
+  it('returns UNIDENTIFIED when no tier matches', async () => {
     const lookup = makeLookup()
 
     const result = await identifyRom(
@@ -150,7 +153,7 @@ describe('identifyRom', () => {
     expect(result.entry).toBeNull()
   })
 
-  it("n'appelle pas les échelons données-seules si les empreintes _Data sont absentes", async () => {
+  it('skips the data-only tiers when the _Data hashes are missing', async () => {
     const lookup = makeLookup()
 
     await identifyRom(
@@ -163,99 +166,129 @@ describe('identifyRom', () => {
   })
 })
 
-describe('scan progress (Redis)', () => {
-  const jobId = `test-job-${randomUUID()}`
+function makeCounters(overrides: Partial<ScanCounters> = {}): ScanCounters {
+  return {
+    processedFiles: 0,
+    identifiedCount: 0,
+    unidentifiedCount: 0,
+    errorCount: 0,
+    current: null,
+    ...overrides,
+  }
+}
 
-  beforeAll(async () => {
-    if (redis.status === 'wait') await redis.connect()
+// Last value written by `redis.set`, as the progress object it serializes
+function lastWrittenProgress(): unknown {
+  const value = set.mock.lastCall?.[1]
+  return typeof value === 'string' ? JSON.parse(value) : undefined
+}
+
+// Tests for the scan progress kept in Redis (mocked): the throttle must keep
+// writes rare, and the final state must always reach Redis.
+describe('scan progress', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    set.mockResolvedValue('OK')
   })
 
   afterEach(async () => {
-    await redis.del(`scan:${jobId}`)
+    await finishProgress('job-1', 'COMPLETED')
+    vi.useRealTimers()
+    vi.resetAllMocks()
   })
 
-  afterAll(async () => {
-    await redis.quit()
-  })
+  it('initProgress writes a RUNNING state under scan:<jobId> with a TTL', async () => {
+    await initProgress('job-1', 'user-1', 10)
 
-  it('initProgress writes the initial state with an EX ttl', async () => {
-    const progress = await initProgress(redis, jobId, 10)
-
-    expect(progress.jobId).toBe(jobId)
-    expect(progress.status).toBe('RUNNING')
-    expect(progress.totalFiles).toBe(10)
-    expect(progress.processedFiles).toBe(0)
-
-    const ttl = await redis.ttl(`scan:${jobId}`)
-    expect(ttl).toBeGreaterThan(0)
-    expect(ttl).toBeLessThanOrEqual(6 * 60 * 60)
-  })
-
-  it('getProgress returns null for an unknown jobId', async () => {
-    const progress = await getProgress(redis, `unknown-${randomUUID()}`)
-    expect(progress).toBeNull()
-  })
-
-  it('getProgress returns what initProgress wrote', async () => {
-    await initProgress(redis, jobId, 5)
-    const progress = await getProgress(redis, jobId)
-
-    expect(progress?.totalFiles).toBe(5)
-    expect(progress?.status).toBe('RUNNING')
-  })
-
-  it('updateProgress with force:true writes immediately', async () => {
-    await initProgress(redis, jobId, 5)
-    await updateProgress(
-      redis,
-      jobId,
-      { processedFiles: 3, current: 'game.nes' },
-      { force: true },
+    expect(set).toHaveBeenCalledWith(
+      'scan:job-1',
+      expect.any(String),
+      'EX',
+      expect.any(Number),
     )
-
-    const progress = await getProgress(redis, jobId)
-    expect(progress?.processedFiles).toBe(3)
-    expect(progress?.current).toBe('game.nes')
+    expect(lastWrittenProgress()).toMatchObject({
+      jobId: 'job-1',
+      userId: 'user-1',
+      status: 'RUNNING',
+      totalFiles: 10,
+      processedFiles: 0,
+    })
   })
 
-  it('updateProgress is throttled: a burst of calls does not write every time', async () => {
-    await initProgress(redis, jobId, 100)
+  it('updateProgress does not write on every call', async () => {
+    await initProgress('job-1', 'user-1', 100)
+    set.mockClear()
 
-    // Fire many updates back to back without `force`; the throttle should
-    // collapse most of them into a single write (by count, since elapsed
-    // time is ~0ms in a tight loop).
     for (let i = 1; i <= 5; i++) {
-      await updateProgress(redis, jobId, { processedFiles: i })
+      await updateProgress('job-1', makeCounters({ processedFiles: i }))
     }
 
-    const progress = await getProgress(redis, jobId)
-    // None of the 5 calls should have reached the "every 25 files or 500ms"
-    // threshold, so the state should still show 0 processed files.
-    expect(progress?.processedFiles).toBe(0)
+    expect(set).not.toHaveBeenCalled()
   })
 
-  it('finishProgress sets the final status and clears `current`', async () => {
-    await initProgress(redis, jobId, 5)
+  it('updateProgress writes once every 25 files', async () => {
+    await initProgress('job-1', 'user-1', 100)
+    set.mockClear()
+
+    for (let i = 1; i <= 25; i++) {
+      await updateProgress('job-1', makeCounters({ processedFiles: i }))
+    }
+
+    expect(set).toHaveBeenCalledTimes(1)
+    expect(lastWrittenProgress()).toMatchObject({ processedFiles: 25 })
+  })
+
+  it('updateProgress writes once 500 ms have passed since the last write', async () => {
+    await initProgress('job-1', 'user-1', 100)
+    set.mockClear()
+
+    vi.advanceTimersByTime(500)
     await updateProgress(
-      redis,
-      jobId,
-      { processedFiles: 5, current: 'last.nes' },
-      { force: true },
+      'job-1',
+      makeCounters({ processedFiles: 1, current: 'nes/game.nes' }),
     )
 
-    const finished = await finishProgress(redis, jobId, 'DONE')
-
-    expect(finished?.status).toBe('DONE')
-    expect(finished?.current).toBeNull()
-    expect(finished?.finishedAt).toBeTruthy()
+    expect(set).toHaveBeenCalledTimes(1)
+    expect(lastWrittenProgress()).toMatchObject({
+      processedFiles: 1,
+      current: 'nes/game.nes',
+    })
   })
 
-  it('finishProgress returns null for an unknown jobId', async () => {
-    const result = await finishProgress(
-      redis,
-      `unknown-${randomUUID()}`,
-      'DONE',
+  it('updateProgress ignores a job that was never initialized', async () => {
+    vi.advanceTimersByTime(500)
+    await updateProgress('unknown-job', makeCounters())
+
+    expect(set).not.toHaveBeenCalled()
+  })
+
+  it('finishProgress writes the final status with the latest counters, even throttled ones', async () => {
+    await initProgress('job-1', 'user-1', 5)
+    await updateProgress(
+      'job-1',
+      makeCounters({ processedFiles: 2, current: 'b.nes' }),
     )
-    expect(result).toBeNull()
+
+    await finishProgress('job-1', 'FAILED', 'disk unreadable')
+
+    expect(lastWrittenProgress()).toMatchObject({
+      status: 'FAILED',
+      processedFiles: 2,
+      current: null,
+      errorMessage: 'disk unreadable',
+    })
+  })
+
+  it('finishProgress does nothing for a job that was never initialized', async () => {
+    await finishProgress('unknown-job', 'COMPLETED')
+
+    expect(set).not.toHaveBeenCalled()
+  })
+
+  it('getProgress reads the progress back from Redis', async () => {
+    get.mockResolvedValue(null)
+
+    await expect(getProgress('job-1')).resolves.toBeNull()
+    expect(get).toHaveBeenCalledWith('scan:job-1')
   })
 })

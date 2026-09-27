@@ -52,7 +52,7 @@ export function errorMiddleware(
       statusCode = 409
       code = 'FOREIGN_KEY_CONSTRAINT'
       message =
-        'La ressource est référencée ailleurs et ne peut pas être supprimé'
+        'La ressource est référencée ailleurs et ne peut pas être supprimée'
       details = prismaErr.meta
     }
   }
@@ -67,7 +67,7 @@ export function errorMiddleware(
     stack: err instanceof Error ? err.stack : String(err),
   }
 
-  // 3. Ensures logs are properly sent with metadata
+  // 3. 5xx are unexpected and logged as errors, anything else is a client mistake
   if (statusCode >= 500) {
     logger.error(
       err instanceof Error ? err.message : 'Erreur fatale non gérée',

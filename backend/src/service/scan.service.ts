@@ -1,173 +1,194 @@
-// backend/src/service/scan.service.ts
-// Pure orchestration: receives all its dependencies as parameters so it can
-// be unit-tested without touching the filesystem, Redis or Postgres.
-
 import path from 'node:path'
+import type {
+  ScanJobSummary,
+  ScanProgress,
+  ScanStatus,
+} from '@repo/shared/types'
+import type { FileHashes, WalkEntry } from '../storage/filesystem.storage.js'
+import type { UpsertRomInput } from '../storage/rom.storage.js'
 import {
   identifyRom,
   type DatLookup,
-  type IdentificationResult,
-  type RomCandidate,
-  type ScanProgress,
-  type ScanStatus,
+  type FinalScanStatus,
+  type ScanCounters,
 } from './identification.service.js'
+import { normalizeTitle } from './title-normalizer.service.js'
 
-// --- Small hand-rolled semaphore (bounded concurrency, no external deps) ---
-class Semaphore {
-  private available: number
-  private readonly queue: Array<() => void> = []
-
-  constructor(max: number) {
-    this.available = max
-  }
-
-  async acquire(): Promise<void> {
-    if (this.available > 0) {
-      this.available -= 1
-      return
-    }
-    return new Promise<void>((resolve) => {
-      this.queue.push(() => {
-        this.available -= 1
-        resolve()
-      })
-    })
-  }
-
-  release(): void {
-    this.available += 1
-    const next = this.queue.shift()
-    if (next) next()
-  }
-}
-
-// --- Dependencies injected by the caller (routes / job-runner) -------------
-
-export type Walk = (root: string) => Promise<string[]>
-export type Hash = (filePath: string) => Promise<RomCandidate>
-
-export interface SaveRomParams {
-  userId: string
-  filePath: string
-  relativePath: string
-  candidate: RomCandidate
-  identification: IdentificationResult
-}
-export type SaveRom = (params: SaveRomParams) => Promise<void>
-
-type ProgressPatch = Partial<
-  Pick<
-    ScanProgress,
-    | 'processedFiles'
-    | 'identifiedCount'
-    | 'unidentifiedCount'
-    | 'errorCount'
-    | 'current'
-  >
->
-
-export interface ReportProgress {
-  init(totalFiles: number): Promise<void>
-  update(patch: ProgressPatch, options?: { force?: boolean }): Promise<void>
-  finish(
-    status: Extract<ScanStatus, 'DONE' | 'ERROR' | 'CANCELLED'>,
-    errorMessage?: string,
-  ): Promise<void>
-}
-
+// Pure orchestration: every I/O is injected, so the scan is testable without
+// touching the filesystem, Redis or PostgreSQL.
 export interface ScanDependencies {
-  walk: Walk
-  hash: Hash
+  walk: (absoluteRoot: string) => Promise<WalkEntry[]>
+  hash: (absolutePath: string) => Promise<FileHashes>
   lookup: DatLookup
-  saveRom: SaveRom
-  reportProgress: ReportProgress
+  saveRom: (rom: UpsertRomInput) => Promise<unknown>
+  reportProgress: ScanProgressReporter
+}
+
+export interface ScanProgressReporter {
+  init(totalFiles: number): Promise<void>
+  update(counters: ScanCounters): Promise<void>
+  finish(
+    status: FinalScanStatus,
+    counters: ScanCounters,
+    errorMessage: string | null,
+  ): Promise<void>
 }
 
 export interface ScanOptions {
   userId: string
-  root: string
+  absoluteRoot: string
+  rootRelativePath: string // Prefix of every stored `relativePath`
   concurrency: number
+  signal: AbortSignal
 }
 
-// --- Orchestration -----------------------------------------------------
+interface ScanJobRecord {
+  id: string
+  rootRelativePath: string
+  status: ScanStatus
+  totalFiles: number
+  processedFiles: number
+  identifiedCount: number
+  unidentifiedCount: number
+  errorCount: number
+  startedAt: Date
+  finishedAt: Date | null
+  errorMessage: string | null
+}
 
+// Hand-rolled semaphore: a finishing task hands its slot straight to the next
+// waiting one, so no more than `max` tasks ever run at the same time.
+function createSemaphore(max: number) {
+  let active = 0
+  const waiting: (() => void)[] = []
+
+  return async function limit<T>(task: () => Promise<T>): Promise<T> {
+    if (active < max) active += 1
+    else await new Promise<void>((resolve) => waiting.push(resolve))
+
+    try {
+      return await task()
+    } finally {
+      const next = waiting.shift()
+      if (next) next()
+      else active -= 1
+    }
+  }
+}
+
+/**
+ * Counts, hashes, identifies and persists every ROM under `absoluteRoot`, at
+ * most `concurrency` files at a time. A failing file only increments
+ * `errorCount`; an abort skips the files not started yet.
+ */
 export async function runScan(
   deps: ScanDependencies,
   options: ScanOptions,
-): Promise<void> {
+): Promise<FinalScanStatus> {
   const { walk, hash, lookup, saveRom, reportProgress } = deps
-  const { userId, root, concurrency } = options
+  const { userId, absoluteRoot, rootRelativePath, concurrency, signal } =
+    options
 
-  //Count the files up front so progress has a known total.
-  const filePaths = await walk(root)
-  await reportProgress.init(filePaths.length)
-
-  const semaphore = new Semaphore(concurrency)
-
-  let processedFiles = 0
-  let identifiedCount = 0
-  let unidentifiedCount = 0
-  let errorCount = 0
-
-  async function processFile(filePath: string): Promise<void> {
-    try {
-      //Hash
-      const candidate = await hash(filePath)
-
-      //Identify
-      const identification = await identifyRom(candidate, lookup)
-      if (identification.source === 'UNIDENTIFIED') {
-        unidentifiedCount += 1
-      } else {
-        identifiedCount += 1
-      }
-
-      //Persist
-      const relativePath = path.relative(root, filePath)
-      await saveRom({
-        userId,
-        filePath,
-        relativePath,
-        candidate,
-        identification,
-      })
-    } catch {
-      errorCount += 1
-    } finally {
-      processedFiles += 1
-      //Publish progress (throttled internally by reportProgress.update)
-      await reportProgress.update({
-        processedFiles,
-        identifiedCount,
-        unidentifiedCount,
-        errorCount,
-        current: filePath,
-      })
-    }
+  const counters: ScanCounters = {
+    processedFiles: 0,
+    identifiedCount: 0,
+    unidentifiedCount: 0,
+    errorCount: 0,
+    current: null,
   }
 
-  const tasks = filePaths.map((filePath) =>
-    (async () => {
-      await semaphore.acquire()
-      try {
-        await processFile(filePath)
-      } finally {
-        semaphore.release()
+  async function processEntry(entry: WalkEntry): Promise<void> {
+    if (signal.aborted) return
+
+    const relativePath = path.join(rootRelativePath, entry.relativePath)
+    try {
+      const hashes = await hash(entry.absolutePath)
+      const fileName = path.basename(entry.absolutePath)
+      const identification = await identifyRom(
+        {
+          fileName,
+          sha1FullFile: hashes.sha1,
+          md5FullFile: hashes.md5,
+          sha1Data: hashes.sha1Data ?? null,
+          md5Data: hashes.md5Data ?? null,
+          headerBytesSkipped: hashes.headerBytesSkipped,
+          normalizedName: normalizeTitle(fileName).baseTitle,
+        },
+        lookup,
+      )
+
+      await saveRom({
+        userId,
+        relativePath,
+        fileName,
+        extension: path.extname(fileName).toLowerCase(),
+        sizeBytes: BigInt(entry.sizeBytes),
+        md5: hashes.md5,
+        sha1: hashes.sha1,
+        md5Data: hashes.md5Data ?? null,
+        sha1Data: hashes.sha1Data ?? null,
+        headerBytesSkipped: hashes.headerBytesSkipped,
+        datEntryId: identification.entry?.id ?? null,
+        identificationSource: identification.source,
+        confidence: identification.confidence,
+        title: identification.entry?.name ?? null,
+      })
+
+      if (identification.source === 'UNIDENTIFIED') {
+        counters.unidentifiedCount += 1
+      } else {
+        counters.identifiedCount += 1
       }
-    })(),
-  )
+    } catch {
+      counters.errorCount += 1
+    }
 
-  await Promise.all(tasks)
+    counters.processedFiles += 1
+    counters.current = relativePath
+    await reportProgress.update({ ...counters })
+  }
 
-  await reportProgress.update(
-    {
-      processedFiles,
-      identifiedCount,
-      unidentifiedCount,
-      errorCount,
-      current: null,
-    },
-    { force: true },
-  )
-  await reportProgress.finish('DONE')
+  try {
+    const entries = await walk(absoluteRoot)
+    await reportProgress.init(entries.length)
+
+    const limit = createSemaphore(concurrency)
+    await Promise.all(entries.map((entry) => limit(() => processEntry(entry))))
+
+    const status = signal.aborted ? 'CANCELLED' : 'COMPLETED'
+    await reportProgress.finish(status, { ...counters, current: null }, null)
+    return status
+  } catch (err) {
+    await reportProgress.finish(
+      'FAILED',
+      { ...counters, current: null },
+      err instanceof Error ? err.message : String(err),
+    )
+    throw err
+  }
+}
+
+// Projects a ScanJob row to the progress shape, for when Redis has expired
+export function toScanProgress(job: ScanJobRecord): ScanProgress {
+  return {
+    jobId: job.id,
+    status: job.status,
+    totalFiles: job.totalFiles,
+    processedFiles: job.processedFiles,
+    identifiedCount: job.identifiedCount,
+    unidentifiedCount: job.unidentifiedCount,
+    errorCount: job.errorCount,
+    current: null,
+    errorMessage: job.errorMessage,
+  }
+}
+
+// Projects a ScanJob row to one entry of the scan history
+export function toScanJobSummary(job: ScanJobRecord): ScanJobSummary {
+  return {
+    ...toScanProgress(job),
+    rootRelativePath: job.rootRelativePath,
+    startedAt: job.startedAt,
+    finishedAt: job.finishedAt,
+  }
 }

@@ -27,6 +27,9 @@ rootRouter.use(authRouter)
  */
 rootRouter.use(libraryRouter)
 /**
- * TODO: Add endpoints here
-*/
+ * POST /scans
+ * GET /scans
+ * GET /scans/:id
+ * DELETE /scans/:id
+ */
 rootRouter.use(scanRouter)

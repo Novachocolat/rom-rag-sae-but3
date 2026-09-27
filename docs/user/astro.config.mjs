@@ -11,6 +11,8 @@ const astroCookie = fileURLToPath(new URL('node_modules/cookie', astroDir))
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://novachocolat.github.io',
+  base: '/rom-rag-sae-but3',
   vite: {
     resolve: {
       alias: { cookie: astroCookie },
@@ -36,6 +38,10 @@ export default defineConfig({
           items: [{ autogenerate: { directory: 'reference' } }],
         },
       ],
+      editLink: {
+        baseUrl:
+          'https://github.com/Novachocolat/rom-rag-sae-but3/edit/main/docs/user/',
+      },
     }),
   ],
 })

@@ -1,4 +1,4 @@
-import type { DependencyStatus, Health } from '@repo/shared/schemas'
+import type { DependencyStatus, Health } from '@repo/shared/types'
 import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { redis } from '../lib/redis.js'

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { hash as argon2Hash, verify as argon2Verify } from '@node-rs/argon2'
-import type { PublicUser } from '@repo/shared/schemas'
+import type { PublicUser } from '@repo/shared/types'
 
 const ARGON2_OPTIONS = {
   algorithm: 2,

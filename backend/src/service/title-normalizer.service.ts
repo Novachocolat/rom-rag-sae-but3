@@ -69,11 +69,6 @@ const LANGUAGE_CODES = new Set([
   'uk',
 ])
 
-const TECH_FLAGS = new Set([
-  'sgb enhanced',
-  'cgb+sgb enhanced',
-  'gb compatible',
-])
 // Regular expressions to match revision tags
 const REVISION_REGEX = /^rev(?:ision)?\.?\s*([0-9]+|[a-z])$/i
 const SPECIAL_REVISION_REGEX =
@@ -120,7 +115,6 @@ export function normalizeTitle(fileName: string): NormalizedTitle {
     return ' '
   })
 
-  working = working.replace(/\.[a-z0-9]{1,4}\s*$/i, '')
   const extensionMatch = EXTENSION_REGEX.exec(working)
   if (
     extensionMatch?.[1] &&
@@ -161,11 +155,6 @@ export function normalizeTitle(fileName: string): NormalizedTitle {
 
     if (REVISION_REGEX.test(tag) || SPECIAL_REVISION_REGEX.test(tag)) {
       revision = revision ?? tag
-      continue
-    }
-
-    if (TECH_FLAGS.has(tag.toLowerCase())) {
-      flags.push(tag)
       continue
     }
 

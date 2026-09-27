@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import type { ParamsDictionary } from 'express-serve-static-core'
+import type { ParamsDictionary, Query } from 'express-serve-static-core'
 import { z } from 'zod'
 
 interface ValidationSchemas {
@@ -22,11 +22,12 @@ export function validate(schemas: ValidationSchemas) {
         )) as ParamsDictionary
       }
       if (schemas.query) {
-        const parsed = await schemas.query.parseAsync(req.query)
+        // req.query is a getter-only accessor, so the parsed result replaces the
+        // property descriptor itself instead of being assigned to it.
+        const parsedQuery = (await schemas.query.parseAsync(req.query)) as Query
         Object.defineProperty(req, 'query', {
-          value: parsed,
+          value: parsedQuery,
           writable: true,
-          enumerable: true,
           configurable: true,
         })
       }

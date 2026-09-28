@@ -1,6 +1,3 @@
-// Fixed per review: removed dead TECH_FLAGS branch (duplicate of fallback),
-// replaced generic extension regex with an explicit ROM extension allowlist.
-
 export interface NormalizedTitle {
   baseTitle: string
   region: string | null
@@ -8,7 +5,8 @@ export interface NormalizedTitle {
   revision: string | null
   flags: string[]
 }
-// Normalization of ROM title from file name
+
+// Region tags, compared lowercased
 const REGION_TOKENS = new Set([
   'usa',
   'europe',
@@ -107,7 +105,8 @@ const EXTENSION_REGEX = /\.([a-z0-9]{1,4})\s*$/i
 
 export function normalizeTitle(fileName: string): NormalizedTitle {
   let working = fileName.replace(/_/g, ' ')
-  working = working.replace(/\[[^\]]*\]/g, ' ') // marqueurs GoodTools ([!], [b]...)
+  // Strips GoodTools markers ([!], [b], ...)
+  working = working.replace(/\[[^\]]*\]/g, ' ')
 
   const tags: string[] = []
   working = working.replace(/\(([^)]*)\)/g, (_m, inner: string) => {

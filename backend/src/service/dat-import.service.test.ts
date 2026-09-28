@@ -164,6 +164,7 @@ describe('importDatFile', () => {
         datFileId: 'dat-file-1',
         gameExternalId: '1204',
         romName: 'Disk1.sfc',
+        normalizedName: 'multi rom game',
       }),
       expect.objectContaining({
         datFileId: 'dat-file-1',

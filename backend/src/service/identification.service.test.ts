@@ -130,6 +130,10 @@ describe('identifyRom', () => {
 
     expect(result.source).toBe('DAT_NAME')
     expect(result.confidence).toBe(0.8)
+    expect(lookup.findByNormalizedName).toHaveBeenCalledWith(
+      'super mario kart',
+      '.sfc',
+    )
   })
 
   it('skips the name lookup when normalizedName is missing', async () => {

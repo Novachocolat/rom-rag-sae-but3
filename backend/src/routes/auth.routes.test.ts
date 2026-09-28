@@ -116,6 +116,19 @@ describe('auth routes', () => {
       expect(create).not.toHaveBeenCalled()
     })
 
+    it('lowercases the email, so the same address cannot sign up twice', async () => {
+      findUnique.mockResolvedValue(dbUser())
+
+      await request(createApp()).post('/api/auth/signup').send({
+        email: 'Player@Example.COM',
+        password: 'correct horse battery staple',
+      })
+
+      expect(findUnique).toHaveBeenCalledWith({
+        where: { email: 'player@example.com' },
+      })
+    })
+
     it('rejects a password shorter than 12 characters', async () => {
       const response = await request(createApp())
         .post('/api/auth/signup')
@@ -136,12 +149,15 @@ describe('auth routes', () => {
       findUnique.mockResolvedValue(dbUser({ passwordHash }))
 
       const response = await request(createApp()).post('/api/auth/login').send({
-        email: 'player@example.com',
+        email: 'PLAYER@example.com',
         password: 'correct horse battery staple',
       })
 
       expect(response.status).toBe(200)
       expect(response.body.id).toBe('user-1')
+      expect(findUnique).toHaveBeenCalledWith({
+        where: { email: 'player@example.com' },
+      })
       expect(response.headers['set-cookie']?.[0]).toMatch(/^rr_session=/)
     })
 

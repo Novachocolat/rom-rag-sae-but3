@@ -8,6 +8,7 @@ import {
   findEntriesByNormalizedName,
   createPlatform,
   findPlatformBySlug,
+  listPlatforms,
   findDatFileByContentSha1,
   listDatFiles,
   deleteDatFile,
@@ -31,6 +32,7 @@ function createPrismaMock() {
     },
     platform: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
     },
     $transaction: vi.fn(),
@@ -48,6 +50,7 @@ function buildEntry(overrides: Partial<DatEntryInput> = {}): DatEntryInput {
     categories: ['Games'],
     serial: undefined,
     romName: 'Game.sfc',
+    normalizedName: 'game',
     sizeBytes: 1024n,
     crc: 'aaaaaaaa',
     md5: undefined,
@@ -141,22 +144,18 @@ describe('findEntryByMd5', () => {
 })
 
 describe('findEntriesByNormalizedName', () => {
-  it('must query case-insensitively on the exact rom name', async () => {
+  it('must query the normalized name, restricted to the same extension', async () => {
     const prisma = createPrismaMock()
     vi.mocked(prisma.datEntry.findMany).mockResolvedValue([])
 
-    await findEntriesByNormalizedName(
-      { prisma },
-      'Super Mario Kart (Europe).sfc',
-    )
+    await findEntriesByNormalizedName({ prisma }, 'super mario kart', '.sfc')
 
     expect(prisma.datEntry.findMany).toHaveBeenCalledWith({
       where: {
-        romName: {
-          equals: 'Super Mario Kart (Europe).sfc',
-          mode: 'insensitive',
-        },
+        normalizedName: 'super mario kart',
+        romName: { endsWith: '.sfc', mode: 'insensitive' },
       },
+      take: 2,
     })
   })
 })
@@ -188,6 +187,19 @@ describe('findPlatformBySlug', () => {
 
     expect(prisma.platform.findUnique).toHaveBeenCalledWith({
       where: { slug: 'nintendo-game-boy' },
+    })
+  })
+})
+
+describe('listPlatforms', () => {
+  it('must list every platform sorted by name', async () => {
+    const prisma = createPrismaMock()
+    vi.mocked(prisma.platform.findMany).mockResolvedValue([])
+
+    await listPlatforms({ prisma })
+
+    expect(prisma.platform.findMany).toHaveBeenCalledWith({
+      orderBy: { name: 'asc' },
     })
   })
 })

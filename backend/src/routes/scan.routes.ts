@@ -1,12 +1,11 @@
 import path from 'node:path'
-import {
-  scanListQuerySchema,
-  scanRequestSchema,
-  type ScanJobSummary,
-  type ScanListQuery,
-  type ScanRequest,
-} from '@repo/shared'
-import type { Paginated } from '@repo/shared/types'
+import { scanListQuerySchema, scanRequestSchema } from '@repo/shared/schemas'
+import type {
+  Paginated,
+  ScanJobSummary,
+  ScanListQuery,
+  ScanRequest,
+} from '@repo/shared/types'
 import { Router } from 'express'
 import { z } from 'zod'
 import { env } from '../env.js'
@@ -24,6 +23,7 @@ import {
   type DatEntry,
   type DatLookup,
 } from '../service/identification.service.js'
+import { detectPlatformSlug } from '../service/rom-file.service.js'
 import {
   runScan,
   toScanJobSummary,
@@ -34,11 +34,13 @@ import {
   findEntriesByNormalizedName,
   findEntryByMd5,
   findEntryBySha1,
+  listPlatforms,
 } from '../storage/dat.storage.js'
 import {
   PathTraversalError,
   hashFile,
   isLibraryDirectory,
+  readFileHead,
   resolveWithinRoot,
   walkDirectory,
   type WalkEntry,
@@ -69,7 +71,7 @@ function toDatEntry(row: DatEntryRow | null | undefined): DatEntry | null {
 }
 
 // No-Intro catalogs hash headerless data, so the data-only hashes are looked
-// up in the same columns as the full-file ones.
+// up in the same columns as the full-file ones
 const datLookup: DatLookup = {
   findBySha1Full: async (sha1) =>
     toDatEntry(await findEntryBySha1({ prisma }, sha1)),
@@ -79,8 +81,14 @@ const datLookup: DatLookup = {
     toDatEntry(await findEntryBySha1({ prisma }, sha1)),
   findByMd5Data: async (md5) =>
     toDatEntry(await findEntryByMd5({ prisma }, md5)),
-  findByNormalizedName: async (name) =>
-    toDatEntry((await findEntriesByNormalizedName({ prisma }, name))[0]),
+  findByNormalizedName: async (name, extension) => {
+    const entries = await findEntriesByNormalizedName(
+      { prisma },
+      name,
+      extension,
+    )
+    return entries.length === 1 ? toDatEntry(entries[0]) : null
+  },
 }
 
 // The whole list is needed up front to know `totalFiles`
@@ -95,15 +103,28 @@ async function collectRomFiles(absoluteRoot: string): Promise<WalkEntry[]> {
 }
 
 // Plugs the real filesystem, DAT catalogs, Redis and PostgreSQL into the
-// scan orchestration, which stays free of any I/O.
+// scan orchestration, which stays free of any I/O
 function buildScanDependencies(
   jobId: string,
   userId: string,
 ): ScanDependencies {
+  let platformIdBySlug: Promise<Map<string, string>> | undefined
+
   return {
     walk: collectRomFiles,
     hash: hashFile,
     lookup: datLookup,
+    detectPlatform: async (entry) => {
+      platformIdBySlug ??= listPlatforms({ prisma }).then(
+        (platforms) =>
+          new Map(platforms.map((platform) => [platform.slug, platform.id])),
+      )
+      const slug = detectPlatformSlug(
+        entry.absolutePath,
+        await readFileHead(entry.absolutePath),
+      )
+      return slug ? ((await platformIdBySlug).get(slug) ?? null) : null
+    },
     saveRom: upsertRom,
     reportProgress: {
       init: async (totalFiles) => {

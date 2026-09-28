@@ -16,9 +16,11 @@ import {
   findEntriesByNormalizedName,
   findEntryByMd5,
   findEntryBySha1,
+  listPlatforms,
 } from '../storage/dat.storage.js'
 import {
   isLibraryDirectory,
+  readFileHead,
   walkDirectory,
 } from '../storage/filesystem.storage.js'
 import {
@@ -51,11 +53,17 @@ vi.mock('../storage/dat.storage.js', () => ({
   findEntryBySha1: vi.fn(),
   findEntryByMd5: vi.fn(),
   findEntriesByNormalizedName: vi.fn(),
+  listPlatforms: vi.fn(),
 }))
 vi.mock('../storage/filesystem.storage.js', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('../storage/filesystem.storage.js')>()
-  return { ...original, isLibraryDirectory: vi.fn(), walkDirectory: vi.fn() }
+  return {
+    ...original,
+    isLibraryDirectory: vi.fn(),
+    walkDirectory: vi.fn(),
+    readFileHead: vi.fn(),
+  }
 })
 vi.mock('../storage/scan-job.storage.js', () => ({
   createScanJob: vi.fn(),
@@ -221,7 +229,55 @@ describe('scan.routes', () => {
       )
       await expect(deps.lookup.findByMd5Full('md5')).resolves.toBeNull()
       await expect(deps.lookup.findByMd5Data('md5')).resolves.toBeNull()
-      await expect(deps.lookup.findByNormalizedName('game')).resolves.toBeNull()
+    })
+
+    it('lookup only accepts a normalized name matching exactly one DAT entry', async () => {
+      const deps = await startScanAndGetDeps()
+      const row = { id: 'entry-1', gameName: 'Game (Europe)', sha1: null }
+
+      // @ts-expect-error partial mock, only the fields the test needs
+      vi.mocked(findEntriesByNormalizedName).mockResolvedValueOnce([row])
+      await expect(
+        deps.lookup.findByNormalizedName('game', '.gb'),
+      ).resolves.toMatchObject({ id: 'entry-1', name: 'Game (Europe)' })
+      expect(findEntriesByNormalizedName).toHaveBeenCalledWith(
+        expect.anything(),
+        'game',
+        '.gb',
+      )
+
+      // @ts-expect-error partial mock, only the fields the test needs
+      vi.mocked(findEntriesByNormalizedName).mockResolvedValueOnce([row, row])
+      await expect(
+        deps.lookup.findByNormalizedName('game', '.gb'),
+      ).resolves.toBeNull()
+    })
+
+    it('detectPlatform maps the slug read from magic bytes to a platform id', async () => {
+      const deps = await startScanAndGetDeps()
+      vi.mocked(listPlatforms).mockResolvedValue([
+        {
+          id: 'platform-nes',
+          slug: 'nintendo-nes',
+          name: 'Nintendo Entertainment System',
+          shortName: 'NES',
+          extensions: ['.nes'],
+        },
+      ])
+      vi.mocked(readFileHead).mockResolvedValue(
+        Buffer.from([0x4e, 0x45, 0x53, 0x1a]),
+      )
+      const entry = {
+        absolutePath: '/roms/nes/a.nes',
+        relativePath: 'a.nes',
+        sizeBytes: 1,
+      }
+
+      await expect(deps.detectPlatform(entry)).resolves.toBe('platform-nes')
+      await expect(
+        deps.detectPlatform({ ...entry, absolutePath: '/roms/nes/a.txt' }),
+      ).resolves.toBeNull()
+      expect(listPlatforms).toHaveBeenCalledTimes(1)
     })
 
     it('reportProgress writes to both Redis and PostgreSQL', async () => {

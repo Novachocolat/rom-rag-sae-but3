@@ -4,6 +4,7 @@ import path from 'node:path'
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '../lib/error.js'
 import { parseDatXml } from './dat-parser.service.js'
+import { normalizeTitle } from './title-normalizer.service.js'
 import {
   upsertDatFile,
   bulkInsertEntries,
@@ -19,9 +20,9 @@ import {
 const DAT_DATASET_DIR = path.resolve(process.cwd(), '../dataset/dat')
 
 // Slugs do not always match their platform names, so a mapping is necessary here
-// TODO: Add other platforms <-> slugs here if wanted
 const HEADER_NAME_TO_SLUG: Record<string, string> = {
   'Nintendo - Nintendo Entertainment System (Headered)': 'nintendo-nes',
+  'Nintendo - Nintendo Entertainment System (Headerless)': 'nintendo-nes',
   'Nintendo - Super Nintendo Entertainment System': 'nintendo-snes',
   'Nintendo - Game Boy': 'nintendo-game-boy',
   'Nintendo - Game Boy Color': 'nintendo-game-boy-color',
@@ -54,10 +55,7 @@ function resolveDatFilePath(fileName: string): string {
   const resolved = path.resolve(DAT_DATASET_DIR, fileName)
 
   if (path.dirname(resolved) !== DAT_DATASET_DIR) {
-    throw AppError.badRequest(
-      'INVALID_FILE_NAME',
-      'Le nom de fichier fourni est invalide',
-    )
+    throw AppError.badRequest('INVALID_FILE_NAME', 'Invalid file name')
   }
   return resolved
 }
@@ -69,10 +67,7 @@ export async function importDatFile(fileName: string) {
   try {
     buffer = await readFile(filePath)
   } catch {
-    throw AppError.notFound(
-      'DAT_FILE_NOT_FOUND',
-      `Le fichier est introuvable : ${fileName}`,
-    )
+    throw AppError.notFound('DAT_FILE_NOT_FOUND', `File not found: ${fileName}`)
   }
 
   // 1. Avoid importing the same .dat file twice
@@ -85,7 +80,7 @@ export async function importDatFile(fileName: string) {
   if (alreadyImported) {
     throw AppError.conflict(
       'DAT_ALREADY_IMPORTED',
-      'Ce fichier .dat a déjà été importé',
+      'This .dat file has already been imported',
       { datFileId: alreadyImported.id },
     )
   }
@@ -123,6 +118,7 @@ export async function importDatFile(fileName: string) {
     categories: game.category,
     serial: undefined,
     romName: rom.name,
+    normalizedName: normalizeTitle(game.name).baseTitle,
     sizeBytes: rom.size,
     crc: rom.crc,
     md5: rom.md5,

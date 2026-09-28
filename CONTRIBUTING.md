@@ -177,17 +177,23 @@ parameters:
 > Some parameters may differ for each platform. Keep it consistent to have
 > successful tests.
 
+**Platforms with a copier or iNES header (NES):** download the **Headerless**
+variant of the catalog. Its hashes skip the 16-byte header, exactly like the
+scanner's data-only hashes (`DAT_SHA1_DATA`). The _Headered_ variant hashes each
+ROM with the canonical NES 2.0 header, which real dumps rarely carry: with it,
+most NES ROMs stay `UNIDENTIFIED`.
+
 ## Secrets
 
 - **No `.env` file is ever committed.** `.gitignore` already excludes `.env` and
   `.env.prod`; do not force-add one.
 - **`.env.example` must be updated in the same PR** whenever you add, rename, or
   remove an environment variable. Add the corresponding field to
-  `shared/src/schemas/env.ts` at the same time. See the comment at the top of
-  `.env.example`.
+  `shared/src/schemas/env.schema.ts` at the same time. See the comment at the
+  top of `.env.example`.
 - Never hardcode a default for a secret-shaped value (password, token, key) in
-  code as a fallback for a missing env var. Fail fast instead (see the `FIX`
-  comment already tracked in `backend/src/env.ts`).
+  code as a fallback for a missing env var. Fail fast instead: `envSchema` has
+  no default, so `backend/src/env.ts` refuses to start on a missing variable.
 - If a secret is ever committed by mistake, treat it as compromised (rotate it).
   Rewriting history is not a substitute for rotation.
 

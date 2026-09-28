@@ -35,6 +35,7 @@ function makeDeps(
       findByMd5Data: vi.fn().mockResolvedValue(null),
       findByNormalizedName: vi.fn().mockResolvedValue(null),
     },
+    detectPlatform: vi.fn().mockResolvedValue('platform-nes'),
     saveRom: vi.fn().mockResolvedValue(undefined),
     reportProgress: {
       init: vi.fn().mockResolvedValue(undefined),
@@ -82,26 +83,46 @@ describe('runScan', () => {
   })
 
   it('stores paths relative to the library root, with the DAT entry it matched', async () => {
-    const deps = makeDeps([makeEntry('Game (Europe).nes')])
+    const deps = makeDeps([makeEntry('game.nes')])
     vi.mocked(deps.lookup.findBySha1Full).mockResolvedValue({
       id: 'dat-entry-1',
-      name: 'Game (Europe)',
+      name: 'Game (Europe) (En,Fr)',
       sha1: 'b'.repeat(40),
       md5: 'a'.repeat(32),
     })
 
     await runScan(deps, makeOptions())
 
+    expect(deps.detectPlatform).toHaveBeenCalledWith(makeEntry('game.nes'))
     expect(deps.saveRom).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-1',
-        relativePath: path.posix.join('nes', 'Game (Europe).nes'),
-        fileName: 'Game (Europe).nes',
+        relativePath: path.posix.join('nes', 'game.nes'),
+        fileName: 'game.nes',
         extension: '.nes',
         sizeBytes: 1024n,
+        platformId: 'platform-nes',
         datEntryId: 'dat-entry-1',
         identificationSource: 'DAT_SHA1',
-        title: 'Game (Europe)',
+        title: 'Game (Europe) (En,Fr)',
+        region: 'Europe',
+        languages: ['En', 'Fr'],
+      }),
+    )
+  })
+
+  it('falls back to the file name tags for an unidentified ROM', async () => {
+    const deps = makeDeps([makeEntry('Homebrew (USA).nes')])
+    vi.mocked(deps.detectPlatform).mockResolvedValue(null)
+
+    await runScan(deps, makeOptions())
+
+    expect(deps.saveRom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identificationSource: 'UNIDENTIFIED',
+        platformId: null,
+        title: null,
+        region: 'USA',
       }),
     )
   })

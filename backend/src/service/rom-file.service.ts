@@ -1,11 +1,18 @@
 import path from 'node:path'
 
-// Pure logic (no I/O): easy to test exhaustively.
-
 export interface PlatformDefinition {
   id: string
   extensions: string[]
 }
+
+// Slugs seeded by prisma/seed.ts: the stable key of each supported platform
+export type PlatformSlug =
+  | 'nintendo-nes'
+  | 'nintendo-snes'
+  | 'nintendo-game-boy'
+  | 'nintendo-game-boy-color'
+  | 'nintendo-game-boy-advance'
+  | 'sega-mega-drive'
 
 const NES_MAGIC = Buffer.from([0x4e, 0x45, 0x53, 0x1a]) // "NES\x1a"
 const SEGA_MAGIC = Buffer.from('SEGA', 'ascii')
@@ -89,4 +96,51 @@ export function hasNesMagic(bytes: Buffer): boolean {
     bytes.length >= NES_MAGIC.length &&
     bytes.subarray(0, NES_MAGIC.length).equals(NES_MAGIC)
   )
+}
+
+/** Every GBA cartridge header carries the fixed value 0x96 at 0xB2. */
+export function hasGbaHeader(bytes: Buffer): boolean {
+  return bytes[0xb2] === 0x96
+}
+
+/**
+ * Detects the platform of a ROM from its extension, breaking ties and
+ * rejecting look-alikes with magic bytes. `head` is the start of the file
+ * (at least 512 bytes when the file is that long).
+ * @returns null when the file is not a valid ROM of a known platform
+ */
+export function detectPlatformSlug(
+  fileName: string,
+  head: Buffer,
+): PlatformSlug | null {
+  const extension = normalizeExtension(fileName)
+
+  switch (extension) {
+    case '.nes':
+      return hasNesMagic(head) ? 'nintendo-nes' : null
+    case '.sfc':
+    case '.smc':
+      // No magic bytes on SNES: only an empty file is rejected
+      return head.length > 0 ? 'nintendo-snes' : null
+    case '.gb':
+    case '.gbc':
+      if (!hasNintendoLogo(head)) return null
+      // 0xC0 is GBC-only; 0x80 (dual mode) exists in both No-Intro catalogs,
+      // so the extension decides, e.g. Pokemon Yellow (.gb) vs Pokemon Gold (.gbc)
+      if (head[0x143] === 0xc0) return 'nintendo-game-boy-color'
+      return isColorGameBoyCartridge(head) && extension === '.gbc'
+        ? 'nintendo-game-boy-color'
+        : 'nintendo-game-boy'
+    case '.gba':
+      return hasGbaHeader(head) ? 'nintendo-game-boy-advance' : null
+    case '.md':
+      // A Markdown file could contain "SEGA" at 0x100 by chance
+      if (looksLikeText(head)) return null
+      return hasSegaMegaDriveHeader(head) ? 'sega-mega-drive' : null
+    case '.bin':
+    case '.gen':
+      return hasSegaMegaDriveHeader(head) ? 'sega-mega-drive' : null
+    default:
+      return null
+  }
 }

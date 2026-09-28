@@ -12,6 +12,7 @@ import {
   createPlatform,
   findPlatformBySlug,
   listDatFiles,
+  listPlatforms,
   deleteDatFile as deleteDatFileStorage,
   type DatEntryInput,
 } from '../storage/dat.storage.js'
@@ -138,6 +139,11 @@ export async function importDatFile(fileName: string) {
 // Lists every imported .dat catalog, with their platform
 export async function getDatCatalog() {
   return listDatFiles({ prisma })
+}
+
+// Lists every imported .dat catalog platforms
+export async function listPlatformsCatalog() {
+  return listPlatforms({ prisma })
 }
 
 /**

@@ -14,7 +14,8 @@
     "typescript/no-explicit-any": "error",
     "import/no-unassigned-import": "off",
     "oxc/no-async-endpoint-handlers": "off",
-    "no-underscore-dangle": "off"
+    "no-underscore-dangle": "off",
+    "no-shadow": "off"
   },
   "overrides": [
     {

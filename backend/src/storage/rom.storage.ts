@@ -1,4 +1,8 @@
-import type { IdentificationSource, Rom } from '../generated/prisma/client.js'
+import type {
+  IdentificationSource,
+  Platform,
+  Rom,
+} from '../generated/prisma/client.js'
 import { prisma } from '../lib/prisma.js'
 
 export interface UpsertRomInput {
@@ -37,16 +41,14 @@ export interface ListRomsFilters {
 }
 
 export interface ListRomsResult {
-  roms: Rom[]
+  roms: (Rom & { platform: Platform | null })[]
   total: number
   page: number
   pageSize: number
 }
 
-/**
- * Creates or updates a ROM keyed by `userId` + `relativePath`, so rescanning
- * the same file never duplicates it and only bumps `lastScannedAt`.
- */
+// Creates or updates a ROM keyed by `userId` + `relativePath`, so rescanning
+// the same file never duplicates it and only bumps `lastScannedAt`
 export function upsertRom(input: UpsertRomInput): Promise<Rom> {
   const { userId, relativePath, ...rest } = input
 
@@ -93,6 +95,7 @@ export async function listRoms(
       skip: (page - 1) * pageSize,
       take: pageSize,
       orderBy: { fileName: 'asc' },
+      include: { platform: true },
     }),
     prisma.rom.count({ where }),
   ])
@@ -115,11 +118,9 @@ export async function countRomsByStatus(
   )
 }
 
-/**
- * Deletes the user's ROMs under `rootRelativePath` that are not in
- * `keepRelativePaths`. Scoped to that subtree, so scanning `snes` never
- * removes the ROMs of `gb`.
- */
+// Deletes the user's ROMs under `rootRelativePath` that are not in
+// `keepRelativePaths`. Scoped to that subtree, so scanning `snes` never
+// removes the ROMs of `gb`
 export async function deleteMissingRoms(
   userId: string,
   rootRelativePath: string,

@@ -1,8 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit'
+import filtersReducer from './slices/filters.slice'
 
 export const store = configureStore({
   reducer: {
-    // TODO (@ThFoxY, US2.5): add the `filters` slice (search, platform, source, page, sort)
+    filters: filtersReducer,
   },
 })
 

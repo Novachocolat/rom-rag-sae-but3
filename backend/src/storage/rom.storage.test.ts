@@ -92,6 +92,7 @@ describe('rom.storage', () => {
       skip: 10,
       take: 10,
       orderBy: { fileName: 'asc' },
+      include: { platform: true },
     })
     expect(count).toHaveBeenCalledWith({ where })
     expect(result).toEqual({ roms: [], total: 3, page: 2, pageSize: 10 })

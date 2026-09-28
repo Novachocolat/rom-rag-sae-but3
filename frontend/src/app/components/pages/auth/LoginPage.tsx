@@ -23,7 +23,7 @@ import { Input } from '@/app/components/ui/input'
 import { Alert, AlertDescription } from '@/app/components/ui/alert'
 
 // Page for users to login to an existing account
-export default function LoginPage() {
+export function LoginPage() {
   const navigate = useNavigate()
   const login = useLogin() // Hook to log an user
 

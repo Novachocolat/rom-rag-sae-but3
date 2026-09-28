@@ -27,8 +27,13 @@ libraryRouter.get(
 
       res.status(200).json({ path: relativePath, directories })
     } catch (err) {
+      // Catches common errors
       if (err instanceof PathTraversalError) {
         next(AppError.badRequest('INVALID_PATH', err.message))
+        return
+      }
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        next(AppError.badRequest('INVALID_PATH', 'Directory does not exist'))
         return
       }
       next(err)

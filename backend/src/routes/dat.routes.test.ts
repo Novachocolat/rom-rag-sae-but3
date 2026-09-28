@@ -4,6 +4,7 @@ import { createApp } from '../app.js'
 import {
   importDatFile,
   getDatCatalog,
+  listPlatformsCatalog,
   deleteDatFile,
 } from '../service/dat-import.service.js'
 
@@ -11,6 +12,7 @@ import {
 vi.mock('../service/dat-import.service.js', () => ({
   importDatFile: vi.fn(),
   getDatCatalog: vi.fn(),
+  listPlatformsCatalog: vi.fn(),
   deleteDatFile: vi.fn(),
 }))
 
@@ -66,6 +68,29 @@ describe('dat routes', () => {
         datFile: { id: 'dat-1' },
         insertedEntries: 2,
       })
+    })
+  })
+
+  describe('GET /platforms', () => {
+    it('must return the platform list', async () => {
+      vi.mocked(listPlatformsCatalog).mockResolvedValue([
+        { id: 'platform-1', slug: 'nintendo-nes', name: 'Nintendo - NES' },
+      ] as never)
+
+      const response = await request(createApp()).get('/api/platforms')
+
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual([
+        { id: 'platform-1', slug: 'nintendo-nes', name: 'Nintendo - NES' },
+      ])
+    })
+
+    it('must forward an unexpected failure as a 500', async () => {
+      vi.mocked(listPlatformsCatalog).mockRejectedValue(new Error('db down'))
+
+      const response = await request(createApp()).get('/api/platforms')
+
+      expect(response.status).toBe(500)
     })
   })
 

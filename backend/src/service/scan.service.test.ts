@@ -95,7 +95,7 @@ describe('runScan', () => {
     expect(deps.saveRom).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-1',
-        relativePath: path.join('nes', 'Game (Europe).nes'),
+        relativePath: path.posix.join('nes', 'Game (Europe).nes'),
         fileName: 'Game (Europe).nes',
         extension: '.nes',
         sizeBytes: 1024n,

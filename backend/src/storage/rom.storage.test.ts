@@ -1,4 +1,3 @@
-import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { prisma } from '../lib/prisma.js'
 import {
@@ -138,7 +137,7 @@ describe('rom.storage', () => {
         userId: 'user-1',
         relativePath: {
           notIn: ['nes/keep.nes'],
-          startsWith: `nes${path.sep}`,
+          startsWith: 'nes/',
         },
       },
     })

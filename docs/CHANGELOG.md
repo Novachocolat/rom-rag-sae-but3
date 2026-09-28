@@ -15,8 +15,68 @@ Please, follow these types of changes:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
-_The changelog must only be updated at the end of the day, **not at every single
-commit!**_
+_The changelog must only be updated at the end of the day or when a sprint is
+completed, **not at every single commit!**_
+
+## [Unreleased] - 2026-09-28
+
+### Added
+
+- Add scan orchestration, Redis-backed progress tracking, and a job runner, with
+  `scan.routes`, `rom.storage`, `scan-job.storage` and `scan-progress.storage`
+- Add shadcn UI components and functional login/signup pages
+- Add a GitHub Actions workflow to deploy the user documentation site online
+- Add `.github/ISSUE_TEMPLATE.md` and sprint 3 monitoring notes
+
+### Changed
+
+- Move `docs-user` workspace to `docs/user`
+
+### Fixed
+
+- Normalize `relativePath` to POSIX separators across scan/storage code so paths
+  stay consistent on Windows (Issue MIYACO-001)
+
+### Removed
+
+- Remove a duplicate ADR-010 file
+
+## [Unreleased] - 2026-09-23
+
+### Added
+
+- Add session-based authentication (signup/login/logout/me) with opaque Redis
+  sessions, Argon2id password hashing, and `docs/SECURITY.md`
+- Add recursive directory scan (`filesystem.storage`), MD5/SHA1 file
+  fingerprinting, ROM extension/magic-byte identification, and
+  `GET /api/library/browse`
+- Add a `.dat` catalog XML parser pipeline (`fast-xml-parser`), DAT
+  import/storage services, and DAT routes
+- Add ROM identification via DAT cascade matching and No-Intro title
+  normalization
+- Add the Astro Starlight user documentation site (`docs-user` workspace,
+  ADR-013)
+
+## [Unreleased] - 2026-09-20
+
+### Added
+
+- Add the full Prisma schema (users, ROMs, DAT entries, scans, sessions) with a
+  `pgvector` HNSW index, a follow-up migration adding SHA1/MD5 data columns, and
+  seed data
+- Add a centralized Zod `env` schema for Ollama/Redis/library configuration,
+  mount the ROM library read-only in `docker-compose.yml`, and add
+  `.github/CODEOWNERS`
+- Add ADR-009 (SonarQube), ADR-010 (EmbeddingGemma vectors in pgvector), ADR-011
+  (opaque Redis sessions with Argon2id), ADR-012 (in-process job with Redis
+  progress, no BullMQ), and Mermaid diagrams in `ARCHITECTURE.md` /
+  `DATA_MODEL.md`
+- Add NES, SNES and Game Boy Advance `.dat` catalogs
+
+### Fixed
+
+- Fix corrupted MegaDrive ROM samples in `dataset/roms`
+- Fix `ProtectedRoute.tsx` casing to avoid a Git case-rename issue on Windows
 
 ## [Unreleased] - 2026-09-16
 

@@ -47,10 +47,8 @@ export interface ListRomsResult {
   pageSize: number
 }
 
-/**
- * Creates or updates a ROM keyed by `userId` + `relativePath`, so rescanning
- * the same file never duplicates it and only bumps `lastScannedAt`.
- */
+// Creates or updates a ROM keyed by `userId` + `relativePath`, so rescanning
+// the same file never duplicates it and only bumps `lastScannedAt`
 export function upsertRom(input: UpsertRomInput): Promise<Rom> {
   const { userId, relativePath, ...rest } = input
 
@@ -120,11 +118,9 @@ export async function countRomsByStatus(
   )
 }
 
-/**
- * Deletes the user's ROMs under `rootRelativePath` that are not in
- * `keepRelativePaths`. Scoped to that subtree, so scanning `snes` never
- * removes the ROMs of `gb`.
- */
+// Deletes the user's ROMs under `rootRelativePath` that are not in
+// `keepRelativePaths`. Scoped to that subtree, so scanning `snes` never
+// removes the ROMs of `gb`
 export async function deleteMissingRoms(
   userId: string,
   rootRelativePath: string,

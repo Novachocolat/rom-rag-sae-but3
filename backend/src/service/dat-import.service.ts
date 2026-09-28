@@ -20,7 +20,6 @@ import {
 const DAT_DATASET_DIR = path.resolve(process.cwd(), '../dataset/dat')
 
 // Slugs do not always match their platform names, so a mapping is necessary here
-// TODO: Add other platforms <-> slugs here if wanted
 const HEADER_NAME_TO_SLUG: Record<string, string> = {
   'Nintendo - Nintendo Entertainment System (Headered)': 'nintendo-nes',
   'Nintendo - Nintendo Entertainment System (Headerless)': 'nintendo-nes',

@@ -71,7 +71,7 @@ function toDatEntry(row: DatEntryRow | null | undefined): DatEntry | null {
 }
 
 // No-Intro catalogs hash headerless data, so the data-only hashes are looked
-// up in the same columns as the full-file ones.
+// up in the same columns as the full-file ones
 const datLookup: DatLookup = {
   findBySha1Full: async (sha1) =>
     toDatEntry(await findEntryBySha1({ prisma }, sha1)),
@@ -103,7 +103,7 @@ async function collectRomFiles(absoluteRoot: string): Promise<WalkEntry[]> {
 }
 
 // Plugs the real filesystem, DAT catalogs, Redis and PostgreSQL into the
-// scan orchestration, which stays free of any I/O.
+// scan orchestration, which stays free of any I/O
 function buildScanDependencies(
   jobId: string,
   userId: string,

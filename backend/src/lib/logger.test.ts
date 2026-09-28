@@ -16,7 +16,7 @@ describe('Logger', () => {
   })
 
   it('must write info-level logs to stdout in JSON format', () => {
-    logger.info("Test d'écriture standard", { requestId: 'req-123' })
+    logger.info('Standard write test', { requestId: 'req-123' })
 
     expect(stdoutSpy).toHaveBeenCalledTimes(1)
     expect(stderrSpy).not.toHaveBeenCalled()
@@ -25,7 +25,7 @@ describe('Logger', () => {
     const jsonPayload = JSON.parse(rawOutput.trim())
 
     expect(jsonPayload.level).toBe('info')
-    expect(jsonPayload.msg).toBe("Test d'écriture standard")
+    expect(jsonPayload.msg).toBe('Standard write test')
     expect(jsonPayload.requestId).toBe('req-123')
     expect(jsonPayload.timestamp).toMatch(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/,
@@ -33,7 +33,7 @@ describe('Logger', () => {
   })
 
   it('must exclusively redirect error-level logs to stderr', () => {
-    logger.error('Échec critique détecté', { code: 'CRITICAL_FAIL' })
+    logger.error('Critical failure detected', { code: 'CRITICAL_FAIL' })
 
     expect(stderrSpy).toHaveBeenCalledTimes(1)
     expect(stdoutSpy).not.toHaveBeenCalled()
@@ -42,7 +42,7 @@ describe('Logger', () => {
     const jsonPayload = JSON.parse(rawOutput.trim())
 
     expect(jsonPayload.level).toBe('error')
-    expect(jsonPayload.msg).toBe('Échec critique détecté')
+    expect(jsonPayload.msg).toBe('Critical failure detected')
     expect(jsonPayload.code).toBe('CRITICAL_FAIL')
   })
 
@@ -50,7 +50,7 @@ describe('Logger', () => {
     const fixedTime = new Date('2026-01-01T00:00:00.000Z')
     vi.setSystemTime(fixedTime)
 
-    logger.info("Vérification de l'horloge")
+    logger.info('Clock check')
 
     const rawOutput = stdoutSpy.mock.calls[0]![0] as string
     const jsonPayload = JSON.parse(rawOutput.trim())

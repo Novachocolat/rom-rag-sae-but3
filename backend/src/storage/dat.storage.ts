@@ -30,6 +30,7 @@ export interface DatEntryInput {
   categories: string[]
   serial: string | undefined
   romName: string
+  normalizedName: string
   sizeBytes: bigint
   crc: string | undefined
   md5: string | undefined
@@ -72,6 +73,14 @@ export async function findPlatformBySlug(
   return deps.prisma.platform.findUnique({
     where: { slug },
   })
+}
+
+/**
+ * Lists every platform, so a scan can map a detected slug to its id
+ * @param {DatStorageDeps} deps - Prisma Client as a dependency
+ */
+export async function listPlatforms(deps: DatStorageDeps): Promise<Platform[]> {
+  return deps.prisma.platform.findMany({ orderBy: { name: 'asc' } })
 }
 
 /**
@@ -154,16 +163,24 @@ export async function findEntryByMd5(
 }
 
 /**
- * Matches normalized ROM names (case-insensitive) when no SHA-1 or MD5 work
+ * Matches a normalized title (see title-normalizer.service.ts) when no SHA-1 or
+ * MD5 work, restricted to ROMs with the same extension (i.e. the same platform)
  * @param {DatStorageDeps} deps - Prisma Client as a dependency
- * @param {string} romName - ROM name
+ * @param {string} normalizedName - `baseTitle` of the scanned file name
+ * @param {string} extension - Extension of the scanned file, dot included
+ * @returns at most two entries: enough for the caller to detect an ambiguity
  */
 export async function findEntriesByNormalizedName(
   deps: DatStorageDeps,
-  romName: string,
+  normalizedName: string,
+  extension: string,
 ): Promise<DatEntry[]> {
   return deps.prisma.datEntry.findMany({
-    where: { romName: { equals: romName, mode: 'insensitive' } },
+    where: {
+      normalizedName,
+      romName: { endsWith: extension, mode: 'insensitive' },
+    },
+    take: 2,
   })
 }
 

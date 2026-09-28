@@ -8,6 +8,7 @@ import {
   hashFile,
   isLibraryDirectory,
   listSubdirectories,
+  readFileHead,
   resolveWithinRoot,
   walkDirectory,
 } from './filesystem.storage.js'
@@ -29,6 +30,14 @@ describe('resolveWithinRoot', () => {
     ['../roms-evil/file.gba', 'sibling directory disguised as a traversal'],
   ])('rejects hostile path: %s (%s)', (hostilePath) => {
     expect(() => resolveWithinRoot(hostilePath)).toThrow()
+  })
+
+  it('keeps a URL-encoded traversal (%2e%2e) inside the root, as a literal name', () => {
+    const resolved = resolveWithinRoot('%2e%2e/%2e%2e/etc/passwd')
+
+    expect(
+      resolved.startsWith(path.resolve(env.ROM_LIBRARY_ROOT) + path.sep),
+    ).toBe(true)
   })
 })
 
@@ -150,6 +159,45 @@ describe('hashFile', () => {
       headerBytesSkipped: 512,
     })
   })
+
+  it('rejects a file that does not exist instead of hanging', async () => {
+    await expect(
+      hashFile(path.join(tmpdir(), 'missing-rom-file.gba')),
+    ).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('hashes an empty (corrupted) file without any data-only digest', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'hash-'))
+    const empty = path.join(root, 'empty.nes')
+    await writeFile(empty, '')
+
+    try {
+      await expect(hashFile(empty)).resolves.toEqual({
+        md5: 'd41d8cd98f00b204e9800998ecf8427e',
+        sha1: 'da39a3ee5e6b4b0d3255bfef95601890afd80709',
+        md5Data: undefined,
+        sha1Data: undefined,
+        headerBytesSkipped: 0,
+      })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('readFileHead', () => {
+  it('returns at most `length` bytes, fewer for a shorter file', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'head-'))
+    const file = path.join(root, 'short.gb')
+    await writeFile(file, Buffer.from([1, 2, 3]))
+
+    try {
+      await expect(readFileHead(file, 2)).resolves.toEqual(Buffer.from([1, 2]))
+      await expect(readFileHead(file)).resolves.toEqual(Buffer.from([1, 2, 3]))
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
 })
 
 describe('listSubdirectories', () => {
@@ -192,6 +240,23 @@ describe('isLibraryDirectory', () => {
 
   it('rejects a hostile path before touching the disk', async () => {
     await expect(isLibraryDirectory('../etc')).rejects.toThrow()
+  })
+
+  it('rejects a symlinked directory that leads outside the root', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'library-'))
+    const outside = await mkdtemp(path.join(tmpdir(), 'outside-'))
+    // A junction needs no admin rights on Windows; the type is ignored elsewhere
+    await symlink(outside, path.join(root, 'escape'), 'junction')
+
+    const originalRoot = env.ROM_LIBRARY_ROOT
+    env.ROM_LIBRARY_ROOT = root
+    try {
+      await expect(isLibraryDirectory('escape')).resolves.toBe(false)
+    } finally {
+      env.ROM_LIBRARY_ROOT = originalRoot
+      await rm(root, { recursive: true, force: true })
+      await rm(outside, { recursive: true, force: true })
+    }
   })
 })
 

@@ -1,10 +1,8 @@
 import { createHash, type Hash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { lstat, readdir, stat } from 'node:fs/promises'
+import { lstat, open, readdir, realpath, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { env } from '../env.js'
-
-// The only file in the backend allowed to touch node:fs.
 
 export interface WalkOptions {
   extensions?: string[]
@@ -52,15 +50,44 @@ export function resolveWithinRoot(relativePath: string): string {
   return resolved
 }
 
-// Tells whether `relativePath` is an existing directory inside ROM_LIBRARY_ROOT
+/**
+ * Tells whether `relativePath` is an existing directory inside ROM_LIBRARY_ROOT.
+ * Compares real paths: a symlink inside the library that points outside of it
+ * must not become a scan root.
+ */
 export async function isLibraryDirectory(
   relativePath: string,
 ): Promise<boolean> {
   const absolutePath = resolveWithinRoot(relativePath)
   try {
-    return (await stat(absolutePath)).isDirectory()
+    const [realRoot, realTarget] = await Promise.all([
+      realpath(env.ROM_LIBRARY_ROOT),
+      realpath(absolutePath),
+    ])
+    if (
+      realTarget !== realRoot &&
+      !realTarget.startsWith(realRoot + path.sep)
+    ) {
+      return false
+    }
+    return (await stat(realTarget)).isDirectory()
   } catch {
     return false
+  }
+}
+
+/** Reads the first `length` bytes of a file (fewer if it is shorter), for magic-byte checks. */
+export async function readFileHead(
+  absolutePath: string,
+  length = 512,
+): Promise<Buffer> {
+  const handle = await open(absolutePath, 'r')
+  try {
+    const buffer = Buffer.alloc(length)
+    const { bytesRead } = await handle.read(buffer, 0, length, 0)
+    return buffer.subarray(0, bytesRead)
+  } finally {
+    await handle.close()
   }
 }
 

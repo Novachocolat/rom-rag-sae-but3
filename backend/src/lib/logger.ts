@@ -42,16 +42,16 @@ function log(
 /**
  * Logger to print debug, info, warn and error logs
  *
- * @example logger.info('Serveur démarré avec succès')
- * >>> {"timestamp":"2026-09-14T...","level":"info","msg":"Serveur démarré avec succès"}
+ * @example logger.info('Server started successfully')
+ * >>> {"timestamp":"2026-09-14T...","level":"info","msg":"Server started successfully"}
  * @example
- * logger.info('Requête HTTP traitée', {
+ * logger.info('HTTP request handled', {
  *      requestId: 'req-abc123',
  *      durationMs: 42,
  *      path: '/api/auth/me',
  *      status: 200
  * });
- * >>> {"timestamp":"...","level":"info","msg":"Requête HTTP traitée","requestId":"req-abc123","durationMs":42,"path":"/api/auth/me","status":200}
+ * >>> {"timestamp":"...","level":"info","msg":"HTTP request handled","requestId":"req-abc123","durationMs":42,"path":"/api/auth/me","status":200}
  */
 export const logger = {
   debug: (msg: string, meta?: Record<string, unknown>) =>

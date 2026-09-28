@@ -1,3 +1,4 @@
+import path from 'node:path'
 import type { ScanProgress, ScanStatus } from '@repo/shared/types'
 import {
   getScanProgress,
@@ -35,7 +36,10 @@ export interface DatLookup {
   findByMd5Full(md5: string): Promise<DatEntry | null>
   findBySha1Data(sha1: string): Promise<DatEntry | null>
   findByMd5Data(md5: string): Promise<DatEntry | null>
-  findByNormalizedName(name: string): Promise<DatEntry | null>
+  findByNormalizedName(
+    name: string,
+    extension: string,
+  ): Promise<DatEntry | null>
 }
 
 export interface IdentificationResult {
@@ -79,7 +83,7 @@ interface ProgressThrottle {
   lastFlushAt: number
 }
 
-// Identification of ROM candidate in a DAT ---
+// Identifies a ROM against the DAT catalogs, from most reliable proof (full-file SHA-1) to the weakest (normalized name)
 export async function identifyRom(
   candidate: RomCandidate,
   datLookup: DatLookup,
@@ -105,6 +109,7 @@ export async function identifyRom(
   if (candidate.normalizedName) {
     const byName = await datLookup.findByNormalizedName(
       candidate.normalizedName,
+      path.extname(candidate.fileName).toLowerCase(),
     )
     if (byName) return buildResult('DAT_NAME', byName, candidate)
   }

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { logger } from './logger.js'
 
+// In-memory registry: a backend restart loses every running job (see ADR-012)
 const jobs = new Map<string, AbortController>()
 
 /**

@@ -7,12 +7,13 @@ import {
   deleteDatFile,
 } from '../service/dat-import.service.js'
 
+// A bare file name only: the service resolves it inside dataset/dat
 const importBodySchema = z.object({
-  fileName: z.string().min(1, 'Le nom du fichier est requis'),
+  fileName: z.string().min(1, 'File name is required'),
 })
 
 const idParamsSchema = z.object({
-  id: z.uuid('ID invalide'),
+  id: z.uuid('Invalid ID'),
 })
 
 export const datRouter = Router()

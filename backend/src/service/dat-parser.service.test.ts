@@ -142,7 +142,32 @@ describe('parseDatXml', () => {
     expect(() => parseDatXml(malformed)).toThrow(z.ZodError)
   })
 
-  it('must throw a clear ZodError on content that is not XML at all', () => {
-    expect(() => parseDatXml('this is not xml at all')).toThrow(z.ZodError)
+  // Malformed XML handling
+  it('must throw a 400 AppError on content that is not XML at all', () => {
+    expect(() => parseDatXml('this is not xml at all')).toThrow(
+      expect.objectContaining({ statusCode: 400, code: 'INVALID_DAT_XML' }),
+    )
+  })
+
+  it('must throw a 400 AppError on a .dat truncated in the middle of a tag', () => {
+    const truncated = DAT_FILE_FIXTURE.slice(
+      0,
+      DAT_FILE_FIXTURE.indexOf('md5='),
+    )
+
+    expect(() => parseDatXml(truncated)).toThrow(
+      expect.objectContaining({ statusCode: 400, code: 'INVALID_DAT_XML' }),
+    )
+  })
+
+  it('must reject a .dat truncated right after a </game> instead of importing half of it', () => {
+    const truncated = DAT_FILE_FIXTURE.slice(
+      0,
+      DAT_FILE_FIXTURE.indexOf('</game>') + '</game>'.length,
+    )
+
+    expect(() => parseDatXml(truncated)).toThrow(
+      expect.objectContaining({ statusCode: 400, code: 'INVALID_DAT_XML' }),
+    )
   })
 })

@@ -49,8 +49,37 @@ describe('normalizeTitle', () => {
     const or = normalizeTitle('Pokemon - Version Or (France).gbc')
     const rouge = normalizeTitle('Pokemon - Version Rouge (France).gb')
     const bleue = normalizeTitle('Pokemon - Version Bleue (France).gb')
-    expect(or.baseTitle).not.toBe(rouge.baseTitle)
-    expect(rouge.baseTitle).not.toBe(bleue.baseTitle)
+    const jaune = normalizeTitle(
+      'Pokemon - Version Jaune - Edition Speciale Pikachu (France).gb',
+    )
+    const baseTitles = new Set(
+      [or, rouge, bleue, jaune].map((title) => title.baseTitle),
+    )
+    expect(baseTitles.size).toBe(4)
+  })
+
+  it.each([
+    ['Pokemon_-_Version_Rubis.gba', 'Pokemon - Version Rubis (France).gba'],
+    ['Pokemon_-_Version_Saphir.gba', 'Pokemon - Version Saphir (France).gba'],
+    [
+      'Pokemon_-_Version_Vert_Feuille.gba',
+      'Pokemon - Version Vert Feuille (France).gba',
+    ],
+  ])(
+    'gives the GBA dataset file %s the baseTitle of its No-Intro name',
+    (fileName, noIntroName) => {
+      expect(normalizeTitle(fileName).baseTitle).toBe(
+        normalizeTitle(noIntroName).baseTitle,
+      )
+    },
+  )
+
+  it('tells the GBA versions Rubis / Saphir apart', () => {
+    expect(
+      normalizeTitle('Pokemon - Version Rubis (France).gba').baseTitle,
+    ).not.toBe(
+      normalizeTitle('Pokemon - Version Saphir (France).gba').baseTitle,
+    )
   })
 
   it('moves a leading "The" to the end to match the No-Intro form', () => {

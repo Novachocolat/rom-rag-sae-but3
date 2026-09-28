@@ -20,6 +20,7 @@ export interface ScanDependencies {
   walk: (absoluteRoot: string) => Promise<WalkEntry[]>
   hash: (absolutePath: string) => Promise<FileHashes>
   lookup: DatLookup
+  detectPlatform: (entry: WalkEntry) => Promise<string | null>
   saveRom: (rom: UpsertRomInput) => Promise<unknown>
   reportProgress: ScanProgressReporter
 }
@@ -85,7 +86,7 @@ export async function runScan(
   deps: ScanDependencies,
   options: ScanOptions,
 ): Promise<FinalScanStatus> {
-  const { walk, hash, lookup, saveRom, reportProgress } = deps
+  const { walk, hash, lookup, detectPlatform, saveRom, reportProgress } = deps
   const { userId, absoluteRoot, rootRelativePath, concurrency, signal } =
     options
 
@@ -103,7 +104,10 @@ export async function runScan(
     // Both sides are always POSIX ('/'), regardless of the host OS
     const relativePath = path.posix.join(rootRelativePath, entry.relativePath)
     try {
-      const hashes = await hash(entry.absolutePath)
+      const [hashes, platformId] = await Promise.all([
+        hash(entry.absolutePath),
+        detectPlatform(entry),
+      ])
       const fileName = path.basename(entry.absolutePath)
       const identification = await identifyRom(
         {
@@ -117,6 +121,8 @@ export async function runScan(
         },
         lookup,
       )
+      // The catalog name is canonical; the file name is only a fallback
+      const title = normalizeTitle(identification.entry?.name ?? fileName)
 
       await saveRom({
         userId,
@@ -129,10 +135,13 @@ export async function runScan(
         md5Data: hashes.md5Data ?? null,
         sha1Data: hashes.sha1Data ?? null,
         headerBytesSkipped: hashes.headerBytesSkipped,
+        platformId,
         datEntryId: identification.entry?.id ?? null,
         identificationSource: identification.source,
         confidence: identification.confidence,
         title: identification.entry?.name ?? null,
+        region: title.region,
+        languages: title.languages,
       })
 
       if (identification.source === 'UNIDENTIFIED') {

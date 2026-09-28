@@ -1,4 +1,5 @@
-import { healthSchema, type Health } from '@repo/shared'
+import { healthSchema } from '@repo/shared/schemas'
+import type { Health } from '@repo/shared/types'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client.js'
 import { cn } from '@/lib/utils.js'
@@ -64,7 +65,7 @@ export default function HealthPanel() {
       : (health?.dependencies.redis ?? 'loading')
 
   return (
-    <main className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-sm">
+    <section className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-sm">
       <header className="flex flex-col gap-1 mb-4">
         <h1 className="text-xl font-semibold">Stack status</h1>
         <p className="text-xs text-muted-foreground">
@@ -76,6 +77,6 @@ export default function HealthPanel() {
         <Badge name="postgresql" state={postgres} />
         <Badge name="redis" state={redis} />
       </ul>
-    </main>
+    </section>
   )
 }

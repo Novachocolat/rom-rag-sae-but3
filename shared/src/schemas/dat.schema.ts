@@ -8,7 +8,7 @@ export const datRomSchema = z.object({
   // BigInt to ensure massive files go through
   size: z
     .string()
-    .regex(/^\d+$/, 'size doit être un entier positif')
+    .regex(/^\d+$/, 'size must be a positive integer')
     .transform((val) => BigInt(val)),
   crc: hashSchema.optional(),
   md5: hashSchema.optional(),

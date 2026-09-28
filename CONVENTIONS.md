@@ -39,6 +39,9 @@ file rather than inventing a new pattern.
 - Types/interfaces: `PascalCase`
 - Zod schemas: `xSchema`, inferred type `X` (e.g. `healthSchema`)
 
+> Everything must be in English (comments, JSDoc, logs, errors, names). Avoid
+> mixing French in the codebase to keep it clean.
+
 ## Project structure
 
 - `shared/` — Zod schemas and types consumed by both `frontend` and `backend`

@@ -181,8 +181,7 @@ parameters:
 variant of the catalog. Its hashes skip the 16-byte header, exactly like the
 scanner's data-only hashes (`DAT_SHA1_DATA`). The _Headered_ variant hashes each
 ROM with the canonical NES 2.0 header, which real dumps rarely carry: with it,
-most NES ROMs stay `UNIDENTIFIED`. Update the expected counts in
-`backend/src/service/dat-parser.service.test.ts` when a catalog changes.
+most NES ROMs stay `UNIDENTIFIED`.
 
 ## Secrets
 

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { authRouter } from './auth.routes.js'
 import { healthRouter } from './health.routes.js'
+import { scanRouter } from './scan.routes.js'
 import { libraryRouter } from './library.routes.js'
 import { datRouter } from './dat.routes.js'
 
@@ -25,3 +26,10 @@ rootRouter.use(authRouter)
  * GET /library/browse
  */
 rootRouter.use(libraryRouter)
+/**
+ * POST /scans
+ * GET /scans
+ * GET /scans/:id
+ * DELETE /scans/:id
+ */
+rootRouter.use(scanRouter)

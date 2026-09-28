@@ -1,4 +1,4 @@
-import { healthSchema, type Health } from '@repo/shared/schemas'
+import { healthSchema, type Health } from '@repo/shared'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client.js'
 import { cn } from '@/lib/utils.js'

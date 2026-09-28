@@ -52,6 +52,18 @@ export function resolveWithinRoot(relativePath: string): string {
   return resolved
 }
 
+// Tells whether `relativePath` is an existing directory inside ROM_LIBRARY_ROOT
+export async function isLibraryDirectory(
+  relativePath: string,
+): Promise<boolean> {
+  const absolutePath = resolveWithinRoot(relativePath)
+  try {
+    return (await stat(absolutePath)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
 /**
  * Recursively walks `absRoot`, yielding one entry per matching file.
  * A generator, not an array: scanning 10,000 files should stream, not allocate.

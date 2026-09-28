@@ -51,7 +51,7 @@ async function main(): Promise<void> {
     })
   }
 
-  logger.info('🎊 seeding succeded', { platforms: PLATFORMS.length })
+  logger.info('🎊 seeding succeeded', { platforms: PLATFORMS.length })
 }
 
 main()

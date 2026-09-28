@@ -6,6 +6,7 @@ import { env } from '../env.js'
 import {
   detectHeaderSize,
   hashFile,
+  isLibraryDirectory,
   listSubdirectories,
   resolveWithinRoot,
   walkDirectory,
@@ -157,6 +158,30 @@ describe('listSubdirectories', () => {
       env.ROM_LIBRARY_ROOT = originalRoot
       await rm(root, { recursive: true, force: true })
     }
+  })
+})
+
+describe('isLibraryDirectory', () => {
+  it('accepts an existing directory and rejects a file or a missing path', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'library-'))
+    await mkdir(path.join(root, 'snes'))
+    await writeFile(path.join(root, 'game.gba'), 'x')
+
+    const originalRoot = env.ROM_LIBRARY_ROOT
+    env.ROM_LIBRARY_ROOT = root
+    try {
+      await expect(isLibraryDirectory('')).resolves.toBe(true)
+      await expect(isLibraryDirectory('snes')).resolves.toBe(true)
+      await expect(isLibraryDirectory('game.gba')).resolves.toBe(false)
+      await expect(isLibraryDirectory('missing')).resolves.toBe(false)
+    } finally {
+      env.ROM_LIBRARY_ROOT = originalRoot
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects a hostile path before touching the disk', async () => {
+    await expect(isLibraryDirectory('../etc')).rejects.toThrow()
   })
 })
 

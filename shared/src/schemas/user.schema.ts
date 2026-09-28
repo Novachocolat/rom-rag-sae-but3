@@ -20,7 +20,3 @@ export const publicUserSchema = z.object({
   displayName: z.string().nullable(),
   createdAt: z.coerce.date(),
 })
-
-export type SignupInput = z.infer<typeof signupSchema>
-export type LoginInput = z.infer<typeof loginSchema>
-export type PublicUser = z.infer<typeof publicUserSchema>

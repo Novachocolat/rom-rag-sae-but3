@@ -159,7 +159,7 @@ sequenceDiagram
     participant AI as Ollama (LLM + embeddinggemma)
     participant DB as PostgreSQL (Rom, AiProposal, RomEmbedding)
 
-    U->>API: POST /api/scans { rootRelativePath }
+    U->>API: POST /api/scans { path }
     API->>Job: create ScanJob (status=PENDING)
     API-->>U: 202 { jobId }
     Job->>FS: walk directory, hash files (md5/sha1)

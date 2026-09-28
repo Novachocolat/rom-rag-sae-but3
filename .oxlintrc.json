@@ -13,7 +13,8 @@
     "no-console": "off",
     "typescript/no-explicit-any": "error",
     "import/no-unassigned-import": "off",
-    "oxc/no-async-endpoint-handlers": "off"
+    "oxc/no-async-endpoint-handlers": "off",
+    "no-underscore-dangle": "off"
   },
   "overrides": [
     {

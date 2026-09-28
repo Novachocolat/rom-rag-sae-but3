@@ -12,7 +12,7 @@ vi.mock('../lib/logger.js', () => ({
   },
 }))
 
-// Tests for the error middleware, which handles any error
+// Tests for the error middleware, which handles errors
 describe('errorMiddleware', () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
@@ -67,7 +67,7 @@ describe('errorMiddleware', () => {
     )
   })
 
-  it('must handle Prisma-known error P2002 as an 409 CONFLICT', () => {
+  it('must handle Prisma-known error P2002 as a 409 CONFLICT', () => {
     const prismaError = {
       code: 'P2002',
       meta: { target: ['email'] },
@@ -92,7 +92,7 @@ describe('errorMiddleware', () => {
     )
   })
 
-  it('must handle Prisma-known error P2025 as an 404 NOT_FOUND', () => {
+  it('must handle Prisma-known error P2025 as a 404 NOT_FOUND', () => {
     const prismaError = {
       code: 'P2025',
       message:
@@ -117,7 +117,7 @@ describe('errorMiddleware', () => {
     )
   })
 
-  it('must mask any unknown exception behind an 500 error without leaking stack trace', () => {
+  it('must mask any unknown exception behind a 500 error without leaking stack trace', () => {
     const nativeError = new Error('Panne de base de données fatale')
 
     errorMiddleware(

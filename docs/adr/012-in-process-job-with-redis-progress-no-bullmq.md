@@ -34,8 +34,8 @@
 - The `ScanJob` PostgreSQL row is the durable record (created `PENDING`, updated
   to `RUNNING`/`COMPLETED`/`FAILED`/`CANCELLED`); Redis holds only the
   **fast-changing counters** (`processedFiles`, live status) under a
-  `scan:<jobId>:progress` key with a short TTL, refreshed as files are
-  processed, so the frontend is not hammering PostgreSQL on every poll.
+  `scan:<jobId>` key with a short TTL, refreshed as files are processed, so the
+  frontend is not hammering PostgreSQL on every poll.
 - The frontend polls `GET /api/scans/:id` with React Query (`refetchInterval`),
   reading Redis first and falling back to the PostgreSQL row; no WebSocket/SSE
   channel is introduced for this.
@@ -50,18 +50,18 @@ sequenceDiagram
     participant R as Redis (progress)
     participant DB as PostgreSQL (ScanJob)
 
-    U->>API: POST /api/scans { rootRelativePath }
+    U->>API: POST /api/scans { path }
     API->>DB: insert ScanJob (status=PENDING)
     API->>Mem: start async scan (fire-and-forget)
     API-->>U: 202 { jobId }
 
     loop every processed file
-        Mem->>R: SET scan:<jobId>:progress { processedFiles, status }
+        Mem->>R: SET scan:<jobId> { processedFiles, status }
     end
 
     loop every refetchInterval
         U->>API: GET /api/scans/:jobId
-        API->>R: GET scan:<jobId>:progress
+        API->>R: GET scan:<jobId>
         alt cache hit
             API-->>U: 200 (from Redis)
         else cache miss
@@ -71,7 +71,7 @@ sequenceDiagram
     end
 
     Mem->>DB: update ScanJob (status=COMPLETED/FAILED)
-    Mem->>R: DEL scan:<jobId>:progress
+    Mem->>R: SET scan:<jobId> { status=COMPLETED } (expires after 6 h)
 ```
 
 ## Consequences

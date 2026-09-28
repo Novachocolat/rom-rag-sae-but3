@@ -8,7 +8,7 @@ const LEVEL_VALUES: Record<LogLevel, number> = {
   error: 3,
 }
 
-// On production environment, only info-level messages are printed on stderr
+// In production, debug-level messages are dropped
 const MIN_LEVEL_VALUE =
   LEVEL_VALUES[process.env.NODE_ENV === 'production' ? 'info' : 'debug']
 
@@ -31,7 +31,7 @@ function log(
 
   const output = JSON.stringify(logPayload)
 
-  // Errors are printed on stedrr, the rest on stdout
+  // Errors are printed on stderr, the rest on stdout
   if (level === 'error') {
     process.stderr.write(output + '\n')
   } else {
@@ -44,7 +44,7 @@ function log(
  *
  * @example logger.info('Serveur démarré avec succès')
  * >>> {"timestamp":"2026-09-14T...","level":"info","msg":"Serveur démarré avec succès"}
- * @exemple
+ * @example
  * logger.info('Requête HTTP traitée', {
  *      requestId: 'req-abc123',
  *      durationMs: 42,

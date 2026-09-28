@@ -4,7 +4,7 @@ import { AppError } from './error.js'
 // Tests for the AppError class, which uses factories for common errors
 describe('AppError', () => {
   describe('Constructor', () => {
-    it('must correctly instanciate AppError with all its properties', () => {
+    it('must correctly instantiate AppError with all its properties', () => {
       const detailsMock = { reason: 'invalid_format' }
       const error = new AppError(
         422,
@@ -30,7 +30,7 @@ describe('AppError', () => {
   })
 
   describe('Factories', () => {
-    it('notFound() must create an 404 error', () => {
+    it('notFound() must create a 404 error', () => {
       const error = AppError.notFound(
         'RESOURCE_NOT_FOUND',
         'La ressource spécifiée est introuvable',
@@ -41,7 +41,7 @@ describe('AppError', () => {
       expect(error.message).toBe('La ressource spécifiée est introuvable')
     })
 
-    it('badRequest() must create an 400 error', () => {
+    it('badRequest() must create a 400 error', () => {
       const error = AppError.badRequest(
         'INVALID_PAYLOAD',
         'Le corps de la requête est malformé',
@@ -52,7 +52,7 @@ describe('AppError', () => {
       expect(error.message).toBe('Le corps de la requête est malformé')
     })
 
-    it('unauthorized() must create an 401 error', () => {
+    it('unauthorized() must create a 401 error', () => {
       const error = AppError.unauthorized(
         'SESSION_EXPIRED',
         'Votre session a expiré',
@@ -63,7 +63,7 @@ describe('AppError', () => {
       expect(error.message).toBe('Votre session a expiré')
     })
 
-    it('conflict() must create an 409 error', () => {
+    it('conflict() must create a 409 error', () => {
       const error = AppError.conflict(
         'RESOURCE_ALREADY_EXISTS',
         'Cette ressource existe déjà',
@@ -74,7 +74,7 @@ describe('AppError', () => {
       expect(error.message).toBe('Cette ressource existe déjà')
     })
 
-    it('serviceUnavailable() must create an 503 error and include optional details', () => {
+    it('serviceUnavailable() must create a 503 error and include optional details', () => {
       const details = { host: 'localhost:11434' }
       const error = AppError.serviceUnavailable(
         'OLLAMA_UNAVAILABLE',

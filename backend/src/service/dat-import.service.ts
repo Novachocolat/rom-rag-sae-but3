@@ -94,7 +94,7 @@ export async function importDatFile(fileName: string) {
   const { header, entries } = parseDatXml(buffer.toString('utf-8'))
   const platform = await resolvePlatform(header.name)
 
-  // 3. A game can contains multiple ROMs (e.g. NES Headered)
+  // 3. A game can contain multiple ROMs (e.g. NES Headered)
   const flatRoms = entries.flatMap((game) => {
     return game.rom.map((rom) => ({
       game,
@@ -145,7 +145,7 @@ export async function getDatCatalog() {
 }
 
 /**
- * Deletes a imported .dat catalog with its entries
+ * Deletes an imported .dat catalog with its entries
  * @param {string} id - ID of the .dat file to delete
  */
 export async function deleteDatFile(id: string) {

@@ -1,5 +1,5 @@
 import { XMLParser } from 'fast-xml-parser'
-import { SyntaxValidator, type ValidationError } from 'fast-xml-validator'
+import { SyntaxValidator } from 'fast-xml-validator'
 import { datFileSummarySchema } from '@repo/shared/schemas'
 import type { DatHeader, DatGame } from '@repo/shared/types'
 import { AppError } from '../lib/error.js'
@@ -21,16 +21,16 @@ const parser = new XMLParser({
 /**
  * Parses a .dat No-Intro file (Logiqx XML format) into a structured object ParsedData
  * @param {string} xmlString - String to parse
- * @throws {AppError} 400 `INVALID_DAT_XML` if the XML is malformed or truncated
+ * @throws {AppError} 400 `INVALID_DAT_XML` if the XML is malformed or truncated (fast-xml-validator)
  * @throws {z.ZodError} if the XML does not match the schema
  */
 export function parseDatXml(xmlString: string): ParsedDat {
   try {
     SyntaxValidator.validate(xmlString)
   } catch (err) {
-    const { msg, line } = (err as ValidationError).err
+    const { message, line } = err as Error & { line?: number }
     throw AppError.badRequest('INVALID_DAT_XML', 'Malformed .dat file', {
-      reason: msg,
+      reason: message,
       line,
     })
   }

@@ -48,11 +48,12 @@ describe('walkDirectory', () => {
 
     const entries = await collect(walkDirectory(root))
 
-    expect(entries.map((e) => e.relativePath).sort()).toEqual(
-      ['a/b/deep.gba', 'a/mid.gba', 'top.gba'].map((p) =>
-        p.replaceAll('/', path.sep),
-      ),
-    )
+    // relativePath is always POSIX, regardless of the host OS
+    expect(entries.map((e) => e.relativePath).sort()).toEqual([
+      'a/b/deep.gba',
+      'a/mid.gba',
+      'top.gba',
+    ])
     expect(
       entries.find((e) => e.relativePath.endsWith('top.gba')),
     ).toMatchObject({ sizeBytes: 3 })
@@ -94,10 +95,19 @@ describe('walkDirectory', () => {
     expect(entries.map((e) => e.relativePath)).toEqual(['visible.gba'])
   })
 
-  it('ignores symlinks instead of following them', async () => {
+  it('ignores symlinks instead of following them', async (ctx) => {
     root = await mkdtemp(path.join(tmpdir(), 'walk-'))
     await writeFile(path.join(root, 'real.gba'), 'x')
-    await symlink(path.join(root, 'real.gba'), path.join(root, 'link.gba'))
+    try {
+      await symlink(path.join(root, 'real.gba'), path.join(root, 'link.gba'))
+    } catch (error) {
+      // Creating symlinks requires Developer Mode or admin rights on Windows
+      if ((error as NodeJS.ErrnoException).code === 'EPERM') {
+        ctx.skip()
+        return
+      }
+      throw error
+    }
 
     const entries = await collect(walkDirectory(root))
 

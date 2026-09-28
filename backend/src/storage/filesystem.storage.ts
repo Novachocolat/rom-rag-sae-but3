@@ -103,7 +103,12 @@ export async function* walkDirectory(
 
       yield {
         absolutePath,
-        relativePath: path.relative(absRoot, absolutePath),
+        // Always POSIX ('/'): this value is persisted (Rom.relativePath) and
+        // compared elsewhere, so it must not depend on the host OS.
+        relativePath: path
+          .relative(absRoot, absolutePath)
+          .split(path.sep)
+          .join('/'),
         sizeBytes: stats.size,
       }
     }

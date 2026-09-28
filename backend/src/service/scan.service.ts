@@ -100,7 +100,8 @@ export async function runScan(
   async function processEntry(entry: WalkEntry): Promise<void> {
     if (signal.aborted) return
 
-    const relativePath = path.join(rootRelativePath, entry.relativePath)
+    // Both sides are always POSIX ('/'), regardless of the host OS
+    const relativePath = path.posix.join(rootRelativePath, entry.relativePath)
     try {
       const hashes = await hash(entry.absolutePath)
       const fileName = path.basename(entry.absolutePath)

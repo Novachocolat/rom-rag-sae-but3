@@ -1,4 +1,3 @@
-import path from 'node:path'
 import type { IdentificationSource, Rom } from '../generated/prisma/client.js'
 import { prisma } from '../lib/prisma.js'
 
@@ -131,8 +130,9 @@ export async function deleteMissingRoms(
       userId,
       relativePath: {
         notIn: keepRelativePaths,
+        // relativePath is always POSIX ('/'), regardless of the host OS
         ...(rootRelativePath !== '' && {
-          startsWith: `${rootRelativePath}${path.sep}`,
+          startsWith: `${rootRelativePath}/`,
         }),
       },
     },

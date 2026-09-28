@@ -139,10 +139,11 @@ scanRouter.post(
       }
 
       const absoluteRoot = resolveWithinRoot(requestedPath)
-      const rootRelativePath = path.relative(
-        path.resolve(env.ROM_LIBRARY_ROOT),
-        absoluteRoot,
-      )
+      // Always POSIX ('/'): joined with, and compared against, entry.relativePath
+      const rootRelativePath = path
+        .relative(path.resolve(env.ROM_LIBRARY_ROOT), absoluteRoot)
+        .split(path.sep)
+        .join('/')
       const job = await createScanJob(userId, rootRelativePath)
 
       startJob(

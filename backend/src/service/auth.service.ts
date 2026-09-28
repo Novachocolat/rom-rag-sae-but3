@@ -16,12 +16,12 @@ interface UserRecord {
   createdAt: Date
 }
 
-/** Hashes a plaintext password with Argon2id for storage. */
+// Hashes a plaintext password with Argon2id for storage
 export function hashPassword(plain: string): Promise<string> {
   return argon2Hash(plain, ARGON2_OPTIONS)
 }
 
-/** Verifies a plaintext password against a stored Argon2id hash. */
+// Verifies a plaintext password against a stored Argon2id hash
 export function verifyPassword(
   hashed: string,
   plain: string,
@@ -29,12 +29,12 @@ export function verifyPassword(
   return argon2Verify(hashed, plain, ARGON2_OPTIONS)
 }
 
-/** Generates an opaque, unguessable session token (32 random bytes, base64url). */
+// Generates an opaque, unguessable session token (32 random bytes, base64url)
 export function createSessionToken(): string {
   return randomBytes(32).toString('base64url')
 }
 
-/** Projects a user record to the API's public shape : drops `passwordHash`. */
+// Projects a user record to the API's public shape : drops `passwordHash`
 export function toPublicUser(user: UserRecord): PublicUser {
   return {
     id: user.id,

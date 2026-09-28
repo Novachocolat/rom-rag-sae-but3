@@ -71,7 +71,8 @@ does it automatically.
 ## Comments and documentation
 
 - Default to no comments; add one only when the code cannot explain itself (a
-  non-obvious constraint, a workaround, a "why").
+  non-obvious constraint, a workaround, a "why"). Always prefer single-line
+  comments, with no end period.
 - Use JSDoc (`/** ... */`) specifically for anything exported from `shared/` or
   for a `backend/src/client`, `service`, or `storage` function whose contract
   isn't obvious from its name and types alone: one clear summary sentence,

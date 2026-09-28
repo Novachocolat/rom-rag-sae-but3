@@ -25,6 +25,7 @@ async function checkRedis(): Promise<DependencyStatus> {
 export const healthRouter = Router()
 
 // TODO: Add Swagger documentation with swagger-jsdoc package
+// Checks the health state of each dependency (Postgres, Redis)
 healthRouter.get('/health', async (_req, res) => {
   const [postgres, redisStatus] = await Promise.all([
     checkPostgres(),

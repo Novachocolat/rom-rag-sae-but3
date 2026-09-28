@@ -4,6 +4,7 @@ import { healthRouter } from './health.routes.js'
 import { scanRouter } from './scan.routes.js'
 import { libraryRouter } from './library.routes.js'
 import { datRouter } from './dat.routes.js'
+import { romRouter } from './rom.routes.js'
 
 // Barrel file to exports all routes
 export const rootRouter = Router()
@@ -33,3 +34,7 @@ rootRouter.use(libraryRouter)
  * DELETE /scans/:id
  */
 rootRouter.use(scanRouter)
+/**
+ * GET /roms
+ */
+rootRouter.use(romRouter)

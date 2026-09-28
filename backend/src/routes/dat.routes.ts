@@ -4,6 +4,7 @@ import { validate } from '../middleware/validate.middleware.js'
 import {
   importDatFile,
   getDatCatalog,
+  listPlatformsCatalog,
   deleteDatFile,
 } from '../service/dat-import.service.js'
 
@@ -24,6 +25,7 @@ datRouter.get('/dat', async (_req, res) => {
   res.json({ data: datFiles })
 })
 
+// TODO: Add Swagger documentation with swagger-jsdoc package
 datRouter.post(
   '/dat/import',
   validate({ body: importBodySchema }),
@@ -34,6 +36,7 @@ datRouter.post(
   },
 )
 
+// TODO: Add Swagger documentation with swagger-jsdoc package
 datRouter.delete(
   '/dat/:id',
   validate({ params: idParamsSchema }),
@@ -43,3 +46,14 @@ datRouter.delete(
     res.status(204).send()
   },
 )
+// TODO: Add Swagger documentation with swagger-jsdoc package
+datRouter.get('/platforms', async (_req, res, next) => {
+  try {
+    const platforms = await listPlatformsCatalog()
+    res
+      .status(200)
+      .json(platforms.map((p) => ({ id: p.id, slug: p.slug, name: p.name })))
+  } catch (err) {
+    next(err)
+  }
+})

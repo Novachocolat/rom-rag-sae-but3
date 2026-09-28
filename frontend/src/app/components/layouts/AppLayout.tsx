@@ -1,6 +1,6 @@
 import { Link, Outlet, useNavigate } from 'react-router'
 import { useMe } from '@/app/hooks/auth/useMe.ts'
-import { LayoutGrid, LogOut, Settings } from 'lucide-react'
+import { LayoutGrid, LogOut, Settings, ScanLine } from 'lucide-react'
 import { useLogout } from '@/app/hooks/auth/useLogout'
 import { Button } from '@/app/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ import {
 const NAV_ITEMS = [
   { to: '/', label: 'Library', icon: LayoutGrid },
   { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/scan', label: 'Scan', icon: ScanLine },
 ]
 
 export function AppLayout() {

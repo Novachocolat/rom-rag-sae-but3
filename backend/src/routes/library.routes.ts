@@ -31,6 +31,10 @@ libraryRouter.get(
         next(AppError.badRequest('INVALID_PATH', err.message))
         return
       }
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        next(AppError.badRequest('INVALID_PATH', 'Directory does not exist'))
+        return
+      }
       next(err)
     }
   },

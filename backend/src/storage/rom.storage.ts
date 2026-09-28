@@ -1,4 +1,8 @@
-import type { IdentificationSource, Rom } from '../generated/prisma/client.js'
+import type {
+  IdentificationSource,
+  Platform,
+  Rom,
+} from '../generated/prisma/client.js'
 import { prisma } from '../lib/prisma.js'
 
 export interface UpsertRomInput {
@@ -37,7 +41,7 @@ export interface ListRomsFilters {
 }
 
 export interface ListRomsResult {
-  roms: Rom[]
+  roms: (Rom & { platform: Platform | null })[]
   total: number
   page: number
   pageSize: number
@@ -93,6 +97,7 @@ export async function listRoms(
       skip: (page - 1) * pageSize,
       take: pageSize,
       orderBy: { fileName: 'asc' },
+      include: { platform: true },
     }),
     prisma.rom.count({ where }),
   ])

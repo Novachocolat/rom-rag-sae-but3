@@ -26,6 +26,7 @@ dist-ssr
 # Generated files
 *.tsbuildinfo
 backend/src/generated
+.astro
 coverage
 
 # Environment variables

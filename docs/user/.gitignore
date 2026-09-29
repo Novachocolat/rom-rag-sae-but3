@@ -1,0 +1,2 @@
+# Astro build output and generated types (node_modules/dist already covered by the root .gitignore)
+.astro/

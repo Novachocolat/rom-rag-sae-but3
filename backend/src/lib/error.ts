@@ -2,7 +2,7 @@
  * Global error class for application errors with factories for common errors
  * @param {number} statusCode - The HTTP code error
  * @param {string} code - The error code in uppercase (e.g. 'INVALID_SESSION', 'RESOURCE_NOT_FOUND', ...)
- * @param {unknown | undefined} details - The error message with details to further comprehend the error (e.g. { reason: 'Données invalides' })
+ * @param {unknown | undefined} details - The error message with details to further comprehend the error (e.g. { reason: 'Invalid data' })
  * @extends Error
  */
 export class AppError extends Error {

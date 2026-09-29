@@ -1,4 +1,4 @@
-import type { DependencyStatus, Health } from '@repo/shared/schemas'
+import type { DependencyStatus, Health } from '@repo/shared/types'
 import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { redis } from '../lib/redis.js'
@@ -25,6 +25,7 @@ async function checkRedis(): Promise<DependencyStatus> {
 export const healthRouter = Router()
 
 // TODO: Add Swagger documentation with swagger-jsdoc package
+// Checks the health state of each dependency (Postgres, Redis)
 healthRouter.get('/health', async (_req, res) => {
   const [postgres, redisStatus] = await Promise.all([
     checkPostgres(),

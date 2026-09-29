@@ -24,20 +24,23 @@ file rather than inventing a new pattern.
   derive the static type with `z.infer<>` rather than hand-writing a matching
   `interface`. For everything else (function signatures, component props,
   internal domain shapes), prefer explicit `interface`/`type` declarations over
-  inferring from usage. See `shared/src/schemas/env.ts` for the pattern already
-  in place.
+  inferring from usage. See `shared/src/schemas/env.schema.ts` for the pattern
+  already in place.
 
 ## Naming
 
 - Files: `kebab-case.ts` (e.g. `user-service.ts`), except React components:
   `PascalCase.tsx` (e.g. `UserCard.tsx`).
 - Routes: `kebab-case.routes.ts` (e.g. `health.routes.ts`)
-- Services: `kebak-case.service.ts`
+- Services: `kebab-case.service.ts`
 - Tests: `kebab-case.test.ts` (e.g. `health.test.ts`)
 - Schemas: `kebab-case.schema.ts` (e.g. `health.schema.ts`)
 - Variables/functions: `camelCase`
 - Types/interfaces: `PascalCase`
 - Zod schemas: `xSchema`, inferred type `X` (e.g. `healthSchema`)
+
+> Everything must be in English (comments, JSDoc, logs, errors, names). Avoid
+> mixing French in the codebase to keep it clean.
 
 ## Project structure
 
@@ -55,10 +58,24 @@ file rather than inventing a new pattern.
 - `frontend/src/components/ui` — shadcn-generated components, not hand-edited
   (regenerate via `npx shadcn add`).
 
+## Imports
+
+Use `@/` to import a frontend module. e.g.: if you import a component from `/ui`
+into a `.tsx` file, use: `import { Button } from '@/app/components/ui/button'`.
+
+Use `@repo/shared/schemas` to import a Zod schema and `@repo/shared/types` to
+import a type (e.g. `import type { PublicUser } from '@repo/shared/types'`). You
+do not need to import a specific file, because the `index.ts` (barrel file)
+already does it automatically.
+
+> Backend files must be imported with their extension (preferably `.js` to avoid
+> issues).
+
 ## Comments and documentation
 
 - Default to no comments; add one only when the code cannot explain itself (a
-  non-obvious constraint, a workaround, a "why").
+  non-obvious constraint, a workaround, a "why"). Always prefer single-line
+  comments, with no end period.
 - Use JSDoc (`/** ... */`) specifically for anything exported from `shared/` or
   for a `backend/src/client`, `service`, or `storage` function whose contract
   isn't obvious from its name and types alone: one clear summary sentence,
@@ -68,8 +85,8 @@ file rather than inventing a new pattern.
   doing too much.
 - Every `TODO` must name an owner and be resolvable; see
   [CONTRIBUTING.md](./CONTRIBUTING.md#definition-of-done) on orphan TODOs.
-  Follow the existing `// TODO: ...` / `// FIX (@handle, YYYY-MM-DD): ...` style
-  already used in `backend/src/env.ts` and `backend/src/routes/health.ts`.
+  Follow the `// TODO (@handle, YYYY-MM-DD): ...` /
+  `// FIX (@handle, YYYY-MM-DD): ...` style.
 - Keep documentation up to date in the same PR as the code it describes.
 
 ## Dataset and prompts hygiene

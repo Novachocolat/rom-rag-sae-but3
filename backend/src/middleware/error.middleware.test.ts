@@ -12,7 +12,7 @@ vi.mock('../lib/logger.js', () => ({
   },
 }))
 
-// Tests for the error middleware, which handles any error
+// Tests for the error middleware, which handles errors
 describe('errorMiddleware', () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
@@ -30,11 +30,7 @@ describe('errorMiddleware', () => {
   })
 
   it('must handle and throw an error of AppError type', () => {
-    const appError = new AppError(
-      404,
-      'ITEM_NOT_FOUND',
-      'Ressource introuvable',
-    )
+    const appError = new AppError(404, 'ITEM_NOT_FOUND', 'Resource not found')
 
     errorMiddleware(appError, mockReq as Request, mockRes as Response, mockNext)
 
@@ -42,7 +38,7 @@ describe('errorMiddleware', () => {
     expect(mockRes.json).toHaveBeenCalledWith({
       error: {
         code: 'ITEM_NOT_FOUND',
-        message: 'Ressource introuvable',
+        message: 'Resource not found',
         details: undefined,
         requestId: 'req-test-123',
       },
@@ -51,7 +47,7 @@ describe('errorMiddleware', () => {
 
   it('must intercept and format an ZodError as a 400 VALIDATION_ERROR', () => {
     const zodError = new z.ZodError([
-      { code: 'custom', path: ['email'], message: 'Email requis' },
+      { code: 'custom', path: ['email'], message: 'Email is required' },
     ])
 
     errorMiddleware(zodError, mockReq as Request, mockRes as Response, mockNext)
@@ -67,7 +63,7 @@ describe('errorMiddleware', () => {
     )
   })
 
-  it('must handle Prisma-known error P2002 as an 409 CONFLICT', () => {
+  it('must handle Prisma-known error P2002 as a 409 CONFLICT', () => {
     const prismaError = {
       code: 'P2002',
       meta: { target: ['email'] },
@@ -86,13 +82,13 @@ describe('errorMiddleware', () => {
       expect.objectContaining({
         error: expect.objectContaining({
           code: 'CONFLICT',
-          message: 'Une ressource identique existe déjà',
+          message: 'An identical resource already exists',
         }),
       }),
     )
   })
 
-  it('must handle Prisma-known error P2025 as an 404 NOT_FOUND', () => {
+  it('must handle Prisma-known error P2025 as a 404 NOT_FOUND', () => {
     const prismaError = {
       code: 'P2025',
       message:
@@ -111,14 +107,14 @@ describe('errorMiddleware', () => {
       expect.objectContaining({
         error: expect.objectContaining({
           code: 'NOT_FOUND',
-          message: 'La ressource demandée est introuvable',
+          message: 'Requested resource not found',
         }),
       }),
     )
   })
 
-  it('must mask any unknown exception behind an 500 error without leaking stack trace', () => {
-    const nativeError = new Error('Panne de base de données fatale')
+  it('must mask any unknown exception behind a 500 error without leaking stack trace', () => {
+    const nativeError = new Error('Fatal database outage')
 
     errorMiddleware(
       nativeError,
@@ -134,7 +130,7 @@ describe('errorMiddleware', () => {
   })
 
   it('must forward the full metadata (requestId, stack, path, method) to logger.error for 500 errors', () => {
-    const nativeError = new Error('Panne de base de données fatale')
+    const nativeError = new Error('Fatal database outage')
 
     errorMiddleware(
       nativeError,
@@ -144,7 +140,7 @@ describe('errorMiddleware', () => {
     )
 
     expect(logger.error).toHaveBeenCalledWith(
-      'Panne de base de données fatale',
+      'Fatal database outage',
       expect.objectContaining({
         requestId: 'req-test-123',
         statusCode: 500,
@@ -158,16 +154,12 @@ describe('errorMiddleware', () => {
   })
 
   it('must forward the full metadata (requestId, path, method) to logger.warn for non-500 errors', () => {
-    const appError = new AppError(
-      404,
-      'ITEM_NOT_FOUND',
-      'Ressource introuvable',
-    )
+    const appError = new AppError(404, 'ITEM_NOT_FOUND', 'Resource not found')
 
     errorMiddleware(appError, mockReq as Request, mockRes as Response, mockNext)
 
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Ressource introuvable'),
+      expect.stringContaining('Resource not found'),
       expect.objectContaining({
         requestId: 'req-test-123',
         statusCode: 404,

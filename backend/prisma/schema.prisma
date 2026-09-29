@@ -73,6 +73,7 @@ model DatEntry {
   categories     String[]
   serial         String?
   romName        String
+  normalizedName String?
   sizeBytes      BigInt
   crc            String?
   md5            String?
@@ -87,6 +88,7 @@ model DatEntry {
   @@index([sha1])
   @@index([datFileId])
   @@index([gameName])
+  @@index([normalizedName])
 }
 
 model Rom {

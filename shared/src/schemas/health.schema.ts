@@ -11,6 +11,3 @@ export const healthSchema = z.object({
     redis: dependencyStatusSchema,
   }),
 })
-
-export type DependencyStatus = z.infer<typeof dependencyStatusSchema>
-export type Health = z.infer<typeof healthSchema>

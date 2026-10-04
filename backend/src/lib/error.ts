@@ -67,4 +67,34 @@ export class AppError extends Error {
   ): AppError {
     return new AppError(503, code, message, details)
   }
+
+  // 413 - Payload Too Large
+  // Used when a request exceeds a hard limit (e.g. Ollama's context window)
+  static payloadTooLarge(
+    code: string,
+    message: string,
+    details?: unknown,
+  ): AppError {
+    return new AppError(413, code, message, details)
+  }
+
+  // 502 - Bad Gateway
+  // Used when an upstream dependency answers, but with an invalid or failing response
+  static badGateway(
+    code: string,
+    message: string,
+    details?: unknown,
+  ): AppError {
+    return new AppError(502, code, message, details)
+  }
+
+  // 504 - Gateway Timeout
+  // Used when an upstream dependency does not answer in time
+  static gatewayTimeout(
+    code: string,
+    message: string,
+    details?: unknown,
+  ): AppError {
+    return new AppError(504, code, message, details)
+  }
 }

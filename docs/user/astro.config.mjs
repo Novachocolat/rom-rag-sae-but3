@@ -33,6 +33,11 @@ export default defineConfig({
           label: 'À propos',
           items: [
             { label: 'Découvrir ROM RAG', slug: 'guides/decouvrir-rom-rag' },
+            { label: 'Premiers pas', slug: 'guides/premiers-pas' },
+            {
+              label: "Utiliser l'application",
+              slug: 'guides/utiliser-l-application',
+            },
           ],
         },
         {

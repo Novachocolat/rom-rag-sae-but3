@@ -1,5 +1,6 @@
 import type { DependencyStatus, Health } from '@repo/shared/types'
 import { Router } from 'express'
+import { pingOllama } from '../client/ollama/ollama-health.js'
 import { prisma } from '../lib/prisma.js'
 import { redis } from '../lib/redis.js'
 
@@ -22,23 +23,38 @@ async function checkRedis(): Promise<DependencyStatus> {
   }
 }
 
+// Checks if Ollama is reachable via the lightest probe available
+async function checkOllamaDependency(): Promise<DependencyStatus> {
+  return (await pingOllama()).up ? 'up' : 'down'
+}
+
 export const healthRouter = Router()
 
 // TODO: Add Swagger documentation with swagger-jsdoc package
-// Checks the health state of each dependency (Postgres, Redis)
+// Checks the health state of each dependency (Postgres, Redis, Ollama)
 healthRouter.get('/health', async (_req, res) => {
-  const [postgres, redisStatus] = await Promise.all([
+  const [postgres, redisStatus, ollama] = await Promise.all([
     checkPostgres(),
     checkRedis(),
+    checkOllamaDependency(),
   ])
 
-  const healthy = postgres === 'up' && redisStatus === 'up'
+  // Postgres/Redis are critical: without them the app can't run at all.
+  // Ollama is optional: its absence degrades AI features but the rest of
+  // the app (sprints 1-2) keeps working, so it must not turn into a 503.
+  const criticalUp = postgres === 'up' && redisStatus === 'up'
+  const status: Health['status'] = !criticalUp
+    ? 'error'
+    : ollama === 'up'
+      ? 'ok'
+      : 'degraded'
+
   const payload: Health = {
-    status: healthy ? 'ok' : 'error',
-    dependencies: { postgres, redis: redisStatus },
+    status,
+    dependencies: { postgres, redis: redisStatus, ollama },
   }
 
-  // 200: OK - The service is healthy
-  // 503: Service Unavailable - The service is unhealthy
-  res.status(healthy ? 200 : 503).json(payload)
+  // 200: OK or degraded - the service itself is usable
+  // 503: Service Unavailable - a critical dependency is down
+  res.status(criticalUp ? 200 : 503).json(payload)
 })

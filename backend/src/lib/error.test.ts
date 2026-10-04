@@ -87,5 +87,38 @@ describe('AppError', () => {
       expect(error.message).toBe('Ollama is not responding')
       expect(error.details).toEqual(details)
     })
+
+    it('payloadTooLarge() must create a 413 error', () => {
+      const error = AppError.payloadTooLarge(
+        'OLLAMA_CONTEXT_OVERFLOW',
+        'Prompt exceeds the context window',
+      )
+
+      expect(error.statusCode).toBe(413)
+      expect(error.code).toBe('OLLAMA_CONTEXT_OVERFLOW')
+      expect(error.message).toBe('Prompt exceeds the context window')
+    })
+
+    it('badGateway() must create a 502 error', () => {
+      const error = AppError.badGateway(
+        'OLLAMA_SERVER_ERROR',
+        'Ollama returned a server error',
+      )
+
+      expect(error.statusCode).toBe(502)
+      expect(error.code).toBe('OLLAMA_SERVER_ERROR')
+      expect(error.message).toBe('Ollama returned a server error')
+    })
+
+    it('gatewayTimeout() must create a 504 error', () => {
+      const error = AppError.gatewayTimeout(
+        'OLLAMA_TIMEOUT',
+        'Ollama did not respond in time',
+      )
+
+      expect(error.statusCode).toBe(504)
+      expect(error.code).toBe('OLLAMA_TIMEOUT')
+      expect(error.message).toBe('Ollama did not respond in time')
+    })
   })
 })

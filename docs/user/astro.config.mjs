@@ -20,7 +20,7 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      title: 'ROM RAG',
+      title: 'ROM RAG — Manuel utilisateur',
       social: [
         {
           icon: 'github',
@@ -30,11 +30,13 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: 'Getting started',
-          items: [{ label: 'Example Guide', slug: 'guides/example' }],
+          label: 'À propos',
+          items: [
+            { label: 'Découvrir ROM RAG', slug: 'guides/decouvrir-rom-rag' },
+          ],
         },
         {
-          label: 'Reference',
+          label: 'Référence',
           items: [{ autogenerate: { directory: 'reference' } }],
         },
       ],

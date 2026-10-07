@@ -14,7 +14,7 @@ with a YAML front-matter header:
 ---
 name: identification
 version: v1
-model: gemma3:27b
+model: gemma4:26b
 temperature: 0.1
 description: One-line summary of what this prompt is for.
 changelog:

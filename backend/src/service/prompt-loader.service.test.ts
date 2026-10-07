@@ -36,7 +36,7 @@ describe('prompt-loader', () => {
 
       expect(prompt.system).toContain('ROM identification assistant')
       expect(prompt.system).not.toContain('# User')
-      expect(prompt.userTemplate).toContain('{{romFileName}}')
+      expect(prompt.userTemplate).toContain('{{fileName}}')
     })
 
     it('throws for an unknown prompt name', () => {
@@ -47,9 +47,10 @@ describe('prompt-loader', () => {
   describe('renderPrompt', () => {
     it('substitutes every variable in the user template', () => {
       const rendered = renderPrompt('identification', {
-        romFileName: 'Sonic.md',
-        platformName: 'Mega Drive',
-        fileSize: '524288',
+        fileName: 'Sonic.md',
+        extension: '.md',
+        sizeBytes: '524288',
+        platformHint: 'Mega Drive',
         candidates: '- Sonic the Hedgehog (World)',
       })
 
@@ -62,10 +63,11 @@ describe('prompt-loader', () => {
 
     it('returns the system message, model and temperature alongside the rendered user prompt', () => {
       const rendered = renderPrompt('identification', {
-        romFileName: 'a',
-        platformName: 'b',
-        fileSize: 'c',
-        candidates: 'd',
+        fileName: 'a',
+        extension: 'b',
+        sizeBytes: 'c',
+        platformHint: 'd',
+        candidates: 'e',
       })
 
       expect(rendered.system).toBeTruthy()
@@ -76,12 +78,13 @@ describe('prompt-loader', () => {
     it('throws loudly instead of leaving a literal {{key}} when a variable is missing', () => {
       expect(() =>
         renderPrompt('identification', {
-          romFileName: 'Sonic.md',
-          // platformName intentionally missing
-          fileSize: '524288',
+          fileName: 'Sonic.md',
+          extension: '.md',
+          sizeBytes: '524288',
+          // platformHint intentionally missing
           candidates: '-',
         } as Record<string, string>),
-      ).toThrow(/Missing variable "platformName"/)
+      ).toThrow(/Missing variable "platformHint"/)
     })
 
     it('renders the grouping prompt', () => {

@@ -1,7 +1,7 @@
 ---
 name: identification
 version: v1
-model: gemma3:27b
+model: gemma4:26b
 temperature: 0.1
 description: >
   Identifies a ROM file that could not be matched against the DAT catalog by

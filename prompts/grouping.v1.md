@@ -1,7 +1,7 @@
 ---
 name: grouping
 version: v1
-model: gemma3:27b
+model: gemma4:26b
 temperature: 0.1
 description: >
   Decides whether a ROM file belongs to an existing collection (the same game

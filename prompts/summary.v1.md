@@ -1,7 +1,7 @@
 ---
 name: summary
 version: v1
-model: gemma3:27b
+model: gemma4:26b
 temperature: 0.2
 description: >
   Writes a short, factual summary of an identified game for display in the

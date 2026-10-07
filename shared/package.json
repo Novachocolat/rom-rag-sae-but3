@@ -25,12 +25,14 @@
     "build": "tsc -b",
     "dev": "tsc -b --watch --preserveWatchOutput",
     "clean": "tsc -b --clean",
-    "ts:check": "tsc --b"
+    "test": "vitest run --passWithNoTests",
+    "ts:check": "tsc -b"
   },
   "dependencies": {
     "zod": "~4.5.4"
   },
   "devDependencies": {
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.0"
   }
 }

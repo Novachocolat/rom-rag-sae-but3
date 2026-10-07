@@ -2,7 +2,7 @@
  * Global error class for application errors with factories for common errors
  * @param {number} statusCode - The HTTP code error
  * @param {string} code - The error code in uppercase (e.g. 'INVALID_SESSION', 'RESOURCE_NOT_FOUND', ...)
- * @param {unknown | undefined} details - The error message with details to further comprehend the error (e.g. { reason: 'Données invalides' })
+ * @param {unknown | undefined} details - The error message with details to further comprehend the error (e.g. { reason: 'Invalid data' })
  * @extends Error
  */
 export class AppError extends Error {
@@ -66,5 +66,35 @@ export class AppError extends Error {
     details?: unknown,
   ): AppError {
     return new AppError(503, code, message, details)
+  }
+
+  // 413 - Payload Too Large
+  // Used when a request exceeds a hard limit (e.g. Ollama's context window)
+  static payloadTooLarge(
+    code: string,
+    message: string,
+    details?: unknown,
+  ): AppError {
+    return new AppError(413, code, message, details)
+  }
+
+  // 502 - Bad Gateway
+  // Used when an upstream dependency answers, but with an invalid or failing response
+  static badGateway(
+    code: string,
+    message: string,
+    details?: unknown,
+  ): AppError {
+    return new AppError(502, code, message, details)
+  }
+
+  // 504 - Gateway Timeout
+  // Used when an upstream dependency does not answer in time
+  static gatewayTimeout(
+    code: string,
+    message: string,
+    details?: unknown,
+  ): AppError {
+    return new AppError(504, code, message, details)
   }
 }

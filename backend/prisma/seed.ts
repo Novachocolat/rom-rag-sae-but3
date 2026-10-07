@@ -51,12 +51,12 @@ async function main(): Promise<void> {
     })
   }
 
-  logger.info('🎊 seeding succeded', { platforms: PLATFORMS.length })
+  logger.info('🎊 seeding succeeded', { platforms: PLATFORMS.length })
 }
 
 main()
   .catch((error: unknown) => {
-    logger.error('Échec du seed', {
+    logger.error('Seed failed', {
       stack: error instanceof Error ? error.stack : String(error),
     })
     process.exitCode = 1

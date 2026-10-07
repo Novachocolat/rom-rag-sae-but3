@@ -1,11 +1,11 @@
 <!-- This title must always be the same as the PR title on GitHub -->
 <!-- e.g. US1.3: Establish secure Express server with error handling -->
 
-# Title format
+# PR title
 
 <!-- If this PR is linked to an issue, clarify it here; if not, delete this -->
 
-`MIYACO-XXXX: Issue title`
+`MIYACO-XXX: Issue title`
 
 ## Description
 

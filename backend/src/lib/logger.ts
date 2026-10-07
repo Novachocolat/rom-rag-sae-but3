@@ -8,7 +8,7 @@ const LEVEL_VALUES: Record<LogLevel, number> = {
   error: 3,
 }
 
-// On production environment, only info-level messages are printed on stderr
+// In production, debug-level messages are dropped
 const MIN_LEVEL_VALUE =
   LEVEL_VALUES[process.env.NODE_ENV === 'production' ? 'info' : 'debug']
 
@@ -31,7 +31,7 @@ function log(
 
   const output = JSON.stringify(logPayload)
 
-  // Errors are printed on stedrr, the rest on stdout
+  // Errors are printed on stderr, the rest on stdout
   if (level === 'error') {
     process.stderr.write(output + '\n')
   } else {
@@ -42,16 +42,16 @@ function log(
 /**
  * Logger to print debug, info, warn and error logs
  *
- * @example logger.info('Serveur démarré avec succès')
- * >>> {"timestamp":"2026-09-14T...","level":"info","msg":"Serveur démarré avec succès"}
- * @exemple
- * logger.info('Requête HTTP traitée', {
+ * @example logger.info('Server started successfully')
+ * >>> {"timestamp":"2026-09-14T...","level":"info","msg":"Server started successfully"}
+ * @example
+ * logger.info('HTTP request handled', {
  *      requestId: 'req-abc123',
  *      durationMs: 42,
  *      path: '/api/auth/me',
  *      status: 200
  * });
- * >>> {"timestamp":"...","level":"info","msg":"Requête HTTP traitée","requestId":"req-abc123","durationMs":42,"path":"/api/auth/me","status":200}
+ * >>> {"timestamp":"...","level":"info","msg":"HTTP request handled","requestId":"req-abc123","durationMs":42,"path":"/api/auth/me","status":200}
  */
 export const logger = {
   debug: (msg: string, meta?: Record<string, unknown>) =>

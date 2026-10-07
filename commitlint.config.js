@@ -18,6 +18,7 @@ export default {
         'db',
         'repo',
         'format',
+        'test',
       ],
     ],
     'subject-case': [2, 'never', ['start-case', 'pascal-case', 'upper-case']],

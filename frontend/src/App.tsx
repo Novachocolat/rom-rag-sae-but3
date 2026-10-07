@@ -1,4 +1,4 @@
-import HealthPanel from '@/app/components/ui/HealthPanel'
+import HealthPanel from '@/app/components/HealthPanel'
 
 export default function App() {
   return (

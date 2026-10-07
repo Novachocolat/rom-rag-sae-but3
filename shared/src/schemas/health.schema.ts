@@ -5,12 +5,10 @@ export const dependencyStatusSchema = z.enum(['up', 'down'])
 
 // Health check schema, including the status of the service and its dependencies
 export const healthSchema = z.object({
-  status: z.enum(['ok', 'error']),
+  status: z.enum(['ok', 'degraded', 'error']),
   dependencies: z.object({
     postgres: dependencyStatusSchema,
     redis: dependencyStatusSchema,
+    ollama: dependencyStatusSchema,
   }),
 })
-
-export type DependencyStatus = z.infer<typeof dependencyStatusSchema>
-export type Health = z.infer<typeof healthSchema>

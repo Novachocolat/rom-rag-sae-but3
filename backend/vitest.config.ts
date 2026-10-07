@@ -29,6 +29,7 @@ export default defineConfig({
       AI_CONFIDENCE_THRESHOLD: '0.75',
       POSTGRES_PORT: '5433',
       FRONTEND_PORT: '5173',
+      DOCS_USER_PORT: '4321',
     },
     coverage: {
       provider: 'v8',

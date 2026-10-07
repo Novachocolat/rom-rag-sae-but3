@@ -140,3 +140,19 @@ export async function deleteMissingRoms(
   })
   return count
 }
+
+// IDs of a user's ROMs still UNIDENTIFIED with no pending AI proposal to review
+export async function listUnidentifiedRomIds(
+  userId: string,
+): Promise<string[]> {
+  const roms = await prisma.rom.findMany({
+    where: {
+      userId,
+      identificationSource: 'UNIDENTIFIED',
+      aiProposals: { none: { status: 'PENDING' } },
+    },
+    select: { id: true },
+    orderBy: { fileName: 'asc' },
+  })
+  return roms.map((rom) => rom.id)
+}

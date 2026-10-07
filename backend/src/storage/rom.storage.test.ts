@@ -5,6 +5,7 @@ import {
   deleteMissingRoms,
   findRomById,
   listRoms,
+  listUnidentifiedRomIds,
   upsertRom,
   type UpsertRomInput,
 } from './rom.storage.js'
@@ -151,6 +152,26 @@ describe('rom.storage', () => {
 
     expect(deleteMany).toHaveBeenCalledWith({
       where: { userId: 'user-1', relativePath: { notIn: [] } },
+    })
+  })
+})
+
+// Tests for listUnidentifiedRomIds, which selects the batch of ROMs to identify with AI
+describe('listUnidentifiedRomIds', () => {
+  it('selects only UNIDENTIFIED ROMs of the user that have no pending proposal', async () => {
+    vi.mocked(prisma.rom.findMany).mockResolvedValue([{ id: 'rom-1' }] as never)
+
+    const ids = await listUnidentifiedRomIds('user-1')
+
+    expect(ids).toEqual(['rom-1'])
+    expect(prisma.rom.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        identificationSource: 'UNIDENTIFIED',
+        aiProposals: { none: { status: 'PENDING' } },
+      },
+      select: { id: true },
+      orderBy: { fileName: 'asc' },
     })
   })
 })

@@ -39,6 +39,13 @@ export interface DatEntryInput {
   status: string | undefined
 }
 
+// Criteria to look for catalog entries similar to a scanned file
+export interface CandidateSearch {
+  normalizedName: string
+  extension: string // dot included, lowercase
+  platformId: string | null
+}
+
 // Structured input to create a platform
 export interface CreatePlatformInput {
   slug: string // The slug is not always matching the name
@@ -232,5 +239,41 @@ export async function deleteDatFile(
         id,
       },
     })
+  })
+}
+
+/**
+ * Finds catalog entries sharing the longest words of a normalized title, for
+ * the same extension (and platform when known). Real names give the model
+ * something to anchor on, which curbs invented titles.
+ * @param {DatStorageDeps} deps - Prisma Client as a dependency
+ * @param {CandidateSearch} search - Normalized title, extension and optional platform
+ * @param {number} limit - Maximum number of candidates returned
+ */
+export async function findCandidateEntries(
+  deps: DatStorageDeps,
+  search: CandidateSearch,
+  limit: number,
+): Promise<{ gameName: string }[]> {
+  // Short words ("of", "the") match almost everything and add no signal
+  const words = search.normalizedName
+    .split(/\s+/)
+    .filter((word) => word.length >= 3)
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 2)
+  if (words.length === 0) return []
+
+  return deps.prisma.datEntry.findMany({
+    where: {
+      AND: words.map((word) => ({
+        normalizedName: { contains: word, mode: 'insensitive' },
+      })),
+      romName: { endsWith: search.extension, mode: 'insensitive' },
+      ...(search.platformId
+        ? { datFile: { platformId: search.platformId } }
+        : {}),
+    },
+    select: { gameName: true },
+    take: limit,
   })
 }

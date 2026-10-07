@@ -67,6 +67,11 @@ const LANGUAGE_CODES = new Set([
   'uk',
 ])
 
+// Used by the AI identification to reject language codes the model invents
+export function isKnownLanguageCode(code: string): boolean {
+  return LANGUAGE_CODES.has(code.toLowerCase())
+}
+
 // Regular expressions to match revision tags
 const REVISION_REGEX = /^rev(?:ision)?\.?\s*([0-9]+|[a-z])$/i
 const SPECIAL_REVISION_REGEX =

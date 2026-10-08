@@ -27,6 +27,7 @@ vi.mock('../storage/ai-proposal.storage.js', () => ({
 
 const AUTH_COOKIE = `${env.SESSION_COOKIE_NAME}=tok123`
 const PROPOSAL_ID = '6f1c1f63-3a5e-4c6b-9a57-1f0d7a1b2c3d'
+const ROM_ID = '0b9d5a52-6a3e-4c0f-8d1a-5e2f7c9b4a10'
 
 const identification = {
   title: 'Tetris',
@@ -185,12 +186,57 @@ describe('AI routes', () => {
       )
     })
 
-    it('rejects an unknown status', async () => {
+    it('returns the whole proposal history of one ROM', async () => {
+      vi.mocked(listProposals).mockResolvedValue({
+        proposals: [
+          {
+            ...proposalRow,
+            status: 'REJECTED',
+            reviewedAt: new Date('2026-10-06T11:00:00.000Z'),
+          },
+        ],
+        total: 1,
+      } as never)
+
       const response = await request(createApp())
-        .get('/api/ai/proposals?status=MAYBE')
+        .get(`/api/ai/proposals?romId=${ROM_ID}&status=ALL`)
+        .set('Cookie', AUTH_COOKIE)
+
+      expect(response.status).toBe(200)
+      // 'ALL' reaches the storage layer as "no status filter"
+      expect(listProposals).toHaveBeenCalledWith({
+        userId: 'user-1',
+        status: undefined,
+        romId: ROM_ID,
+        page: 1,
+        pageSize: 20,
+      })
+      expect(response.body.data[0]).toMatchObject({
+        status: 'REJECTED',
+        reviewedAt: '2026-10-06T11:00:00.000Z',
+      })
+    })
+
+    it('exposes a null reviewedAt for a proposal nobody reviewed', async () => {
+      vi.mocked(listProposals).mockResolvedValue({
+        proposals: [{ ...proposalRow, reviewedAt: null }],
+        total: 1,
+      } as never)
+
+      const response = await request(createApp())
+        .get('/api/ai/proposals')
+        .set('Cookie', AUTH_COOKIE)
+
+      expect(response.body.data[0].reviewedAt).toBeNull()
+    })
+
+    it('rejects a romId that is not a UUID', async () => {
+      const response = await request(createApp())
+        .get('/api/ai/proposals?romId=not-a-uuid')
         .set('Cookie', AUTH_COOKIE)
 
       expect(response.status).toBe(400)
+      expect(listProposals).not.toHaveBeenCalled()
     })
   })
 

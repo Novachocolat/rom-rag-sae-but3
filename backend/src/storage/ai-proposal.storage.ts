@@ -19,7 +19,8 @@ export interface CreateProposalInput {
 
 export interface ListProposalsInput {
   userId: string
-  status: ProposalStatus
+  status?: ProposalStatus // omitted: every status
+  romId?: string // omitted: every ROM of the user
   page: number
   pageSize: number
 }
@@ -37,11 +38,13 @@ export function createProposal(input: CreateProposalInput) {
   })
 }
 
-// Review queue for one user: newest proposals first
+// Proposals of one user, newest first: the review queue when filtered by status, the history of a ROM when filtered by `romId`
 export async function listProposals(input: ListProposalsInput) {
   const where = {
     kind: 'IDENTIFICATION' as const,
     status: input.status,
+    ...(input.status && { status: input.status }),
+    ...(input.romId && { romId: input.romId }),
     rom: { userId: input.userId },
   }
 

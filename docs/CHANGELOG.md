@@ -24,6 +24,34 @@ completed, **not at every single commit!**_
 
 - Add scan orchestration, Redis-backed progress tracking, and a job runner, with
   `scan.routes`, `rom.storage`, `scan-job.storage` and `scan-progress.storage`
+- Add the library and scan pages with filters, an identification status badge
+  and live scan progress, backed by `GET /api/roms` and `GET /api/platforms`
+- Add a `normalizedName` column on DAT entries for name-based identification,
+  and broken, truncated and duplicate ROM samples to the test dataset
+- Add shadcn UI components and functional login/signup pages
+- Add a GitHub Actions workflow to deploy the user documentation site online
+- Add `.github/ISSUE_TEMPLATE.md` and sprint 3 monitoring notes
+
+### Changed
+
+- Move `docs-user` workspace to `docs/user`
+- Translate backend logs and error messages to English
+
+### Fixed
+
+- Normalize `relativePath` to POSIX separators across scan/storage code so paths
+  stay consistent on Windows (Issue MIYACO-001)
+
+### Removed
+
+- Remove a duplicate ADR-010 file
+
+## [Unreleased] - 2026-09-28
+
+### Added
+
+- Add scan orchestration, Redis-backed progress tracking, and a job runner, with
+  `scan.routes`, `rom.storage`, `scan-job.storage` and `scan-progress.storage`
 - Add shadcn UI components and functional login/signup pages
 - Add a GitHub Actions workflow to deploy the user documentation site online
 - Add `.github/ISSUE_TEMPLATE.md` and sprint 3 monitoring notes

@@ -3,7 +3,7 @@ import { useMe } from '@/app/hooks/auth/useMe.ts'
 import { LayoutGrid, LogOut, Settings, ScanLine } from 'lucide-react'
 import { useLogout } from '@/app/hooks/auth/useLogout'
 import { Button } from '@/app/components/ui/button'
-import { cn } from '@/lib/utils'
+import { OllamaStatus } from '@/app/components/ai/OllamaStatus'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,8 +22,6 @@ export function AppLayout() {
   const { data: user } = useMe() // Gets user's session
   const logout = useLogout()
   const navigate = useNavigate()
-  // TODO (@Novachocolat): replace with the `pingOllama()` availability probe
-  const isOllamaUp = false
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -50,18 +48,7 @@ export function AppLayout() {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="h-16 border-b border-border bg-card px-8 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <span>Ollama status :</span>
-            <span
-              className={cn(
-                'inline-flex h-2.5 w-2.5 rounded-full',
-                isOllamaUp ? 'bg-green-500' : 'bg-red-500',
-              )}
-            />
-            <span className="text-xs text-muted-foreground">
-              {isOllamaUp ? 'Available' : 'Down'}
-            </span>
-          </div>
+          <OllamaStatus />
 
           <DropdownMenu>
             <DropdownMenuTrigger

@@ -22,7 +22,7 @@ quand Ollama est éteint.** Toutes les fonctionnalités des sprints 1 et 2 doive
 continuer de marcher, et l'IU doit dire clairement pourquoi la fonction IA est
 grisée.
 
-## US3.1 — Adaptateur Ollama
+## US-3.1 — Adaptateur Ollama
 
 - **EN TANT QUE** développeur
 - **JE SOUHAITE** une interface d'inférence unique, typée et résiliente
@@ -49,7 +49,7 @@ grisée.
 
 ---
 
-## US3.2 — Prompts versionnés
+## US-3.2 — Prompts versionnés
 
 - **EN TANT QUE** développeur
 - **JE SOUHAITE** que les prompts vivent dans des fichiers relus et versionnés
@@ -68,7 +68,7 @@ grisée.
 
 ---
 
-## US3.3 — Identification assistée par IA
+## US-3.3 — Identification assistée par IA
 
 - **EN TANT QU'** utilisateur
 - **JE SOUHAITE** qu'une ROM non identifiée par les catalogues reçoive une
@@ -98,7 +98,7 @@ grisée.
 
 ---
 
-## US3.4 — Interface : fiabilité et dégradation
+## US-3.4 — Interface : fiabilité et dégradation
 
 - **EN TANT QU'** utilisateur
 - **JE SOUHAITE** voir d'un coup d'œil ce qui est certain et ce qui est proposé

@@ -6,6 +6,7 @@ import {
   findEntryBySha1,
   findEntryByMd5,
   findEntriesByNormalizedName,
+  findCandidateEntries,
   createPlatform,
   findPlatformBySlug,
   listPlatforms,
@@ -252,5 +253,65 @@ describe('deleteDatFile', () => {
       where: { datFileId: 'dat-1' },
     })
     expect(tx.datFile.delete).toHaveBeenCalledWith({ where: { id: 'dat-1' } })
+  })
+})
+
+// Tests for findCandidateEntries, which feeds the AI with plausible catalog names
+describe('findCandidateEntries', () => {
+  it('matches on the two longest words of the normalized title, same extension', async () => {
+    const prisma = createPrismaMock()
+    vi.mocked(prisma.datEntry.findMany).mockResolvedValue([])
+
+    await findCandidateEntries(
+      { prisma },
+      {
+        normalizedName: 'super mario land',
+        extension: '.gb',
+        platformId: null,
+      },
+      5,
+    )
+
+    expect(prisma.datEntry.findMany).toHaveBeenCalledWith({
+      where: {
+        AND: [
+          { normalizedName: { contains: 'super', mode: 'insensitive' } },
+          { normalizedName: { contains: 'mario', mode: 'insensitive' } },
+        ],
+        romName: { endsWith: '.gb', mode: 'insensitive' },
+      },
+      select: { gameName: true },
+      take: 5,
+    })
+  })
+
+  it('restricts the search to the platform when it is known', async () => {
+    const prisma = createPrismaMock()
+    vi.mocked(prisma.datEntry.findMany).mockResolvedValue([])
+
+    await findCandidateEntries(
+      { prisma },
+      { normalizedName: 'sonic', extension: '.md', platformId: 'plat-1' },
+      5,
+    )
+
+    expect(prisma.datEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ datFile: { platformId: 'plat-1' } }),
+      }),
+    )
+  })
+
+  it('ignores words shorter than three letters', async () => {
+    const prisma = createPrismaMock()
+
+    const result = await findCandidateEntries(
+      { prisma },
+      { normalizedName: 'of a to', extension: '.nes', platformId: null },
+      5,
+    )
+
+    expect(result).toEqual([])
+    expect(prisma.datEntry.findMany).not.toHaveBeenCalled()
   })
 })

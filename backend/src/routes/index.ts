@@ -5,6 +5,7 @@ import { scanRouter } from './scan.routes.js'
 import { libraryRouter } from './library.routes.js'
 import { datRouter } from './dat.routes.js'
 import { romRouter } from './rom.routes.js'
+import { aiRouter } from './ai.routes.js'
 
 // Barrel file to exports all routes
 export const rootRouter = Router()
@@ -36,5 +37,13 @@ rootRouter.use(libraryRouter)
 rootRouter.use(scanRouter)
 /**
  * GET /roms
+ * GET /roms/:id
  */
 rootRouter.use(romRouter)
+/**
+ * POST /ai/roms/:id/identify
+ * POST /ai/roms/identify-batch
+ * GET /ai/proposals
+ * POST /ai/proposals/:id/review
+ */
+rootRouter.use(aiRouter)

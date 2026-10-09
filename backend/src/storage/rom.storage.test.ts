@@ -4,7 +4,9 @@ import {
   countRomsByStatus,
   deleteMissingRoms,
   findRomById,
+  findRomDetail,
   listRoms,
+  listUnidentifiedRomIds,
   upsertRom,
   type UpsertRomInput,
 } from './rom.storage.js'
@@ -15,6 +17,7 @@ vi.mock('../lib/prisma.js', () => ({
     rom: {
       upsert: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
       groupBy: vi.fn(),
@@ -25,6 +28,7 @@ vi.mock('../lib/prisma.js', () => ({
 
 const upsert = vi.mocked(prisma.rom.upsert)
 const findUnique = vi.mocked(prisma.rom.findUnique)
+const findFirst = vi.mocked(prisma.rom.findFirst)
 const findMany = vi.mocked(prisma.rom.findMany)
 const count = vi.mocked(prisma.rom.count)
 const groupBy = vi.mocked(prisma.rom.groupBy)
@@ -61,6 +65,16 @@ describe('rom.storage', () => {
 
     await expect(findRomById('rom-1')).resolves.toBeNull()
     expect(findUnique).toHaveBeenCalledWith({ where: { id: 'rom-1' } })
+  })
+
+  it('findRomDetail scopes the lookup to the user and loads the detail relations', async () => {
+    findFirst.mockResolvedValue(null)
+
+    await expect(findRomDetail('rom-1', 'user-1')).resolves.toBeNull()
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: 'rom-1', userId: 'user-1' },
+      include: { platform: true, datEntry: { include: { datFile: true } } },
+    })
   })
 
   it('listRoms paginates and applies every filter', async () => {
@@ -151,6 +165,26 @@ describe('rom.storage', () => {
 
     expect(deleteMany).toHaveBeenCalledWith({
       where: { userId: 'user-1', relativePath: { notIn: [] } },
+    })
+  })
+})
+
+// Tests for listUnidentifiedRomIds, which selects the batch of ROMs to identify with AI
+describe('listUnidentifiedRomIds', () => {
+  it('selects only UNIDENTIFIED ROMs of the user that have no pending proposal', async () => {
+    vi.mocked(prisma.rom.findMany).mockResolvedValue([{ id: 'rom-1' }] as never)
+
+    const ids = await listUnidentifiedRomIds('user-1')
+
+    expect(ids).toEqual(['rom-1'])
+    expect(prisma.rom.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        identificationSource: 'UNIDENTIFIED',
+        aiProposals: { none: { status: 'PENDING' } },
+      },
+      select: { id: true },
+      orderBy: { fileName: 'asc' },
     })
   })
 })

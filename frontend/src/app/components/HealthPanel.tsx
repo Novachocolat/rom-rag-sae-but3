@@ -1,7 +1,4 @@
-import { healthSchema } from '@repo/shared/schemas'
-import type { Health } from '@repo/shared/types'
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client.js'
+import { useHealth } from '@/app/hooks/health/useHealth.ts'
 import { cn } from '@/lib/utils.js'
 
 // Per-dependency display state, with `loading` for the pending first fetch
@@ -39,18 +36,8 @@ function Badge({ name, state }: { name: string; state: Probe }) {
 
 // The main app currently only fetches the health report and renders a badge for each dependency
 export default function HealthPanel() {
-  const {
-    data: health,
-    isError,
-    isLoading,
-  } = useQuery<Health>({
-    queryKey: ['health', 'report'],
-    queryFn: async () => {
-      const response = await apiClient<unknown>('/health')
-      return healthSchema.parse(response)
-    },
-    refetchInterval: 1000 * 30,
-  })
+  // Shared with the header's Ollama status, so both always agree
+  const { data: health, isError, isLoading } = useHealth()
 
   const backend: Probe = isError ? 'down' : isLoading ? 'loading' : 'up'
   const postgres: Probe = isError
@@ -63,6 +50,11 @@ export default function HealthPanel() {
     : isLoading
       ? 'loading'
       : (health?.dependencies.redis ?? 'loading')
+  const ollama: Probe = isError
+    ? 'down'
+    : isLoading
+      ? 'loading'
+      : (health?.dependencies.ollama ?? 'loading')
 
   return (
     <section className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -76,6 +68,8 @@ export default function HealthPanel() {
         <Badge name="backend" state={backend} />
         <Badge name="postgresql" state={postgres} />
         <Badge name="redis" state={redis} />
+        {/* "down" here only means degraded: AI features are unavailable, the rest of the app isn't */}
+        <Badge name="ollama" state={ollama} />
       </ul>
     </section>
   )

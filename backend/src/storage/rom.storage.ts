@@ -1,6 +1,7 @@
 import type {
   IdentificationSource,
   Platform,
+  Prisma,
   Rom,
 } from '../generated/prisma/client.js'
 import { prisma } from '../lib/prisma.js'
@@ -47,6 +48,16 @@ export interface ListRomsResult {
   pageSize: number
 }
 
+// Relations the detail page displays next to the ROM itself
+const romDetailInclude = {
+  platform: true,
+  datEntry: { include: { datFile: true } },
+} as const
+
+export type RomWithDetail = Prisma.RomGetPayload<{
+  include: typeof romDetailInclude
+}>
+
 // Creates or updates a ROM keyed by `userId` + `relativePath`, so rescanning
 // the same file never duplicates it and only bumps `lastScannedAt`
 export function upsertRom(input: UpsertRomInput): Promise<Rom> {
@@ -62,6 +73,18 @@ export function upsertRom(input: UpsertRomInput): Promise<Rom> {
 // Returns a ROM by id, or null if it does not exist
 export function findRomById(id: string): Promise<Rom | null> {
   return prisma.rom.findUnique({ where: { id } })
+}
+
+// Returns a user's ROM with its platform and matched DAT entry, or null if it does not exist
+// Scoped by `userId` so a user can never read the ROM of another one
+export function findRomDetail(
+  id: string,
+  userId: string,
+): Promise<RomWithDetail | null> {
+  return prisma.rom.findFirst({
+    where: { id, userId },
+    include: romDetailInclude,
+  })
 }
 
 // Lists a user's ROMs matching `filters`, 20 per page by default
@@ -139,4 +162,20 @@ export async function deleteMissingRoms(
     },
   })
   return count
+}
+
+// IDs of a user's ROMs still UNIDENTIFIED with no pending AI proposal to review
+export async function listUnidentifiedRomIds(
+  userId: string,
+): Promise<string[]> {
+  const roms = await prisma.rom.findMany({
+    where: {
+      userId,
+      identificationSource: 'UNIDENTIFIED',
+      aiProposals: { none: { status: 'PENDING' } },
+    },
+    select: { id: true },
+    orderBy: { fileName: 'asc' },
+  })
+  return roms.map((rom) => rom.id)
 }

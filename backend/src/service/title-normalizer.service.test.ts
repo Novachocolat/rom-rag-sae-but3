@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeTitle } from './title-normalizer.service.js'
+import {
+  isKnownLanguageCode,
+  normalizeTitle,
+} from './title-normalizer.service.js'
 
 // Tests for normalizeTitle function
 describe('normalizeTitle', () => {
@@ -121,5 +124,18 @@ describe('normalizeTitle', () => {
   it('collapses the extra spaces left by removed tags', () => {
     const result = normalizeTitle('Sonic   the   Hedgehog (World).md')
     expect(result.baseTitle).toBe('sonic the hedgehog')
+  })
+})
+
+// Tests for isKnownLanguageCode, which validates language codes from the AI
+describe('isKnownLanguageCode', () => {
+  it('accepts supported codes regardless of case', () => {
+    expect(isKnownLanguageCode('en')).toBe(true)
+    expect(isKnownLanguageCode('JA')).toBe(true)
+  })
+
+  it('rejects codes that are not supported', () => {
+    expect(isKnownLanguageCode('xx')).toBe(false)
+    expect(isKnownLanguageCode('english')).toBe(false)
   })
 })

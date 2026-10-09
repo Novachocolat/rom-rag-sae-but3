@@ -27,6 +27,7 @@ export function useHealth() {
     },
     refetchInterval: HEALTH_POLL_INTERVAL_MS,
     refetchOnWindowFocus: true, // Coming back to the tab shows the current state at once
+    refetchIntervalInBackground: false, // No need to poll when the user is not on the tab
     staleTime: 0,
     retry: false, // The next poll is the retry
   })

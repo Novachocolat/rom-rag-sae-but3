@@ -17,7 +17,7 @@ interface UseProposalsOptions {
   pageSize?: number
 }
 
-// Hook to call GET /ai/proposals?<params>: the review queue by default, or the hole proposal history of a ROM with `romId` and the `ALL` status
+// Hook to call GET /ai/proposals?<params>: the review queue by default, or the whole proposal history of a ROM with `romId` and the `ALL` status
 export function useProposals({
   romId,
   status = 'PENDING',

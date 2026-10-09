@@ -43,7 +43,6 @@ export async function listProposals(input: ListProposalsInput) {
   const where = {
     kind: 'IDENTIFICATION' as const,
     status: input.status,
-    ...(input.status && { status: input.status }),
     ...(input.romId && { romId: input.romId }),
     rom: { userId: input.userId },
   }

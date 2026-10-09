@@ -238,6 +238,15 @@ describe('AI routes', () => {
       expect(response.status).toBe(400)
       expect(listProposals).not.toHaveBeenCalled()
     })
+
+    it('rejects an unknown status', async () => {
+      const response = await request(createApp())
+        .get('/api/ai/proposals?status=BOGUS')
+        .set('Cookie', AUTH_COOKIE)
+
+      expect(response.status).toBe(400)
+      expect(listProposals).not.toHaveBeenCalled()
+    })
   })
 
   describe('POST /api/ai/proposals/:id/review', () => {

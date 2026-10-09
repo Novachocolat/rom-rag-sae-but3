@@ -39,14 +39,12 @@ written into the ROM: it waits in a review queue until a user accepts it.
 
 ## Endpoints
 
-| Method | Path                          | Behaviour                                                                                                     |
-| ------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| POST   | `/api/ai/roms/:id/identify`   | Identifies one ROM, answers `200` with the proposal                                                           |
-| POST   | `/api/ai/roms/identify-batch` | Identifies every `UNIDENTIFIED` ROM in a background job, answers `202`                                        |
-| GET    | `/api/ai/proposals`           | Paginated review queue, `status` defaults to `PENDING`; `romId` plus `status=ALL` give the history of one ROM |
-
-| POST | `/api/ai/proposals/:id/review` |
-`{ action: 'accept' \| 'reject', corrections? }` |
+| Method | Path                           | Behaviour                                                                                                     |
+| ------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/ai/roms/:id/identify`    | Identifies one ROM, answers `200` with the proposal                                                           |
+| POST   | `/api/ai/roms/identify-batch`  | Identifies every `UNIDENTIFIED` ROM in a background job, answers `202`                                        |
+| GET    | `/api/ai/proposals`            | Paginated review queue, `status` defaults to `PENDING`; `romId` plus `status=ALL` give the history of one ROM |
+| POST   | `/api/ai/proposals/:id/review` | `{ action: 'accept' \| 'reject', corrections? }`                                                              |
 
 When Ollama is unreachable, the single-ROM route answers
 `503 OLLAMA_UNAVAILABLE` and the batch stops early.

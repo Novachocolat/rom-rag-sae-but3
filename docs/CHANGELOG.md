@@ -18,6 +18,47 @@ Please, follow these types of changes:
 _The changelog must only be updated at the end of the day or when a sprint is
 completed, **not at every single commit!**_
 
+## [Unreleased] - 2026-10-07
+
+### Added
+
+- Add the ROM detail page (`/roms/:id`) with metadata, whole-file and data-only
+  fingerprints, a plain-language explanation of `headerBytesSkipped`, the
+  matched DAT entry and the AI proposal history, backed by `GET /api/roms/:id`
+- Add `ConfidenceBadge` (gauge, level and raw score), `ProposalCard` (proposed
+  fields, reasoning, model, prompt version, accept/reject) and `OllamaStatus`
+  components, plus `AiButton`, which disables any inference action with an
+  explanatory tooltip while Ollama is down
+- Add frontend hooks `useIdentifyWithAi`, `useProposals`, `useReviewProposal`,
+  `useOllamaStatus`, `useHealth` and `useRom`
+- Add AI-assisted identification of `UNIDENTIFIED` ROMs with human review:
+  coherence checks, confidence threshold, Redis cache, proposal storage, and the
+  `/api/ai` routes (identify, identify-batch, proposals, review), documented in
+  `docs/AI.md`
+- Add versioned prompt files (`identification`, `grouping`, `summary`) with
+  `prompts/README.md` and a prompt loader
+- Add the Ollama adapter: a single resilient HTTP transport (timeout, retries
+  with backoff), one error class per failure mode, LLM and embedding clients,
+  and `/api/version` and `/api/tags` health probes
+- Add `AppError` factories for `413`, `502` and `504`
+- Add a headerless NES `.dat` catalog and the sprint 4 monitoring notes
+
+### Changed
+
+- `GET /api/ai/proposals` accepts `romId` and `status=ALL`, and a proposal now
+  exposes `reviewedAt`
+- The header's Ollama indicator follows the health probe instead of a hard-coded
+  constant; the health report is polled every 10 seconds and on window focus,
+  and is still read when the API answers `503`
+- Library rows link to the ROM detail page and show the confidence badge instead
+  of a bare percentage
+- `GET /api/health` reports Ollama and answers `200` with a `degraded` status
+  when only Ollama is down
+
+### Fixed
+
+- Remove a duplicate rule in the commitlint configuration
+
 ## [Unreleased] - 2026-09-28
 
 ### Added
@@ -36,29 +77,6 @@ completed, **not at every single commit!**_
 
 - Move `docs-user` workspace to `docs/user`
 - Translate backend logs and error messages to English
-
-### Fixed
-
-- Normalize `relativePath` to POSIX separators across scan/storage code so paths
-  stay consistent on Windows (Issue MIYACO-001)
-
-### Removed
-
-- Remove a duplicate ADR-010 file
-
-## [Unreleased] - 2026-09-28
-
-### Added
-
-- Add scan orchestration, Redis-backed progress tracking, and a job runner, with
-  `scan.routes`, `rom.storage`, `scan-job.storage` and `scan-progress.storage`
-- Add shadcn UI components and functional login/signup pages
-- Add a GitHub Actions workflow to deploy the user documentation site online
-- Add `.github/ISSUE_TEMPLATE.md` and sprint 3 monitoring notes
-
-### Changed
-
-- Move `docs-user` workspace to `docs/user`
 
 ### Fixed
 

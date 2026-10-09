@@ -4,6 +4,7 @@ import {
   countRomsByStatus,
   deleteMissingRoms,
   findRomById,
+  findRomDetail,
   listRoms,
   listUnidentifiedRomIds,
   upsertRom,
@@ -16,6 +17,7 @@ vi.mock('../lib/prisma.js', () => ({
     rom: {
       upsert: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
       groupBy: vi.fn(),
@@ -26,6 +28,7 @@ vi.mock('../lib/prisma.js', () => ({
 
 const upsert = vi.mocked(prisma.rom.upsert)
 const findUnique = vi.mocked(prisma.rom.findUnique)
+const findFirst = vi.mocked(prisma.rom.findFirst)
 const findMany = vi.mocked(prisma.rom.findMany)
 const count = vi.mocked(prisma.rom.count)
 const groupBy = vi.mocked(prisma.rom.groupBy)
@@ -62,6 +65,16 @@ describe('rom.storage', () => {
 
     await expect(findRomById('rom-1')).resolves.toBeNull()
     expect(findUnique).toHaveBeenCalledWith({ where: { id: 'rom-1' } })
+  })
+
+  it('findRomDetail scopes the lookup to the user and loads the detail relations', async () => {
+    findFirst.mockResolvedValue(null)
+
+    await expect(findRomDetail('rom-1', 'user-1')).resolves.toBeNull()
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: 'rom-1', userId: 'user-1' },
+      include: { platform: true, datEntry: { include: { datFile: true } } },
+    })
   })
 
   it('listRoms paginates and applies every filter', async () => {

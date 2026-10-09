@@ -37,6 +37,7 @@ interface ProposalRow {
   promptName: string
   promptVersion: string
   createdAt: Date
+  reviewedAt: Date | null
   rom: { fileName: string } | null
 }
 
@@ -58,6 +59,7 @@ function toAiProposal(row: ProposalRow): AiProposal {
     promptName: row.promptName,
     promptVersion: row.promptVersion,
     createdAt: row.createdAt.toISOString(),
+    reviewedAt: row.reviewedAt?.toISOString() ?? null,
   }
 }
 
@@ -94,6 +96,7 @@ aiRouter.post('/ai/roms/identify-batch', requireAuth, (_req, res, next) => {
 })
 
 // GET /api/ai/proposals: the review queue, filtered by status (PENDING by default)
+// `romId` narrows it to one ROM and `status=ALL` lifts the status filter, which together give the proposal history of a ROM
 aiRouter.get(
   '/ai/proposals',
   requireAuth,
@@ -101,12 +104,13 @@ aiRouter.get(
   async (req, res, next) => {
     try {
       const userId = res.locals.userId as string
-      const { status, page, pageSize } =
+      const { status, romId, page, pageSize } =
         req.query as unknown as AiProposalListQuery
 
       const { proposals, total } = await listProposals({
         userId,
-        status,
+        status: status === 'ALL' ? undefined : status,
+        romId,
         page,
         pageSize,
       })

@@ -10,8 +10,13 @@ import {
   identifyUnidentifiedRoms,
   reviewProposal,
 } from '../service/ai-identification.service.js'
+import { getEmbeddingStatus } from '../service/embedding.service.js'
 import { listProposals } from '../storage/ai-proposal.storage.js'
 
+vi.mock('../service/embedding.service.js', () => ({
+  backfillEmbeddings: vi.fn(),
+  getEmbeddingStatus: vi.fn(),
+}))
 vi.mock('../lib/redis.js', () => ({
   redis: { get: vi.fn(), expire: vi.fn() },
 }))
@@ -298,6 +303,38 @@ describe('AI routes', () => {
         .send({ action: 'maybe' })
 
       expect(response.status).toBe(400)
+    })
+  })
+
+  describe('embeddings', () => {
+    it('POST /api/ai/embeddings/backfill starts a job and answers 202', async () => {
+      const response = await request(createApp())
+        .post('/api/ai/embeddings/backfill')
+        .set('Cookie', AUTH_COOKIE)
+
+      expect(response.status).toBe(202)
+      expect(response.body.jobId).toEqual(expect.any(String))
+      expect(startJob).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects an unauthenticated request', async () => {
+      const response = await request(createApp()).get(
+        '/api/ai/embeddings/status',
+      )
+
+      expect(response.status).toBe(401)
+    })
+
+    it('GET /api/ai/embeddings/status returns the progress', async () => {
+      const status = { total: 10, embedded: 8, missing: 2 }
+      vi.mocked(getEmbeddingStatus).mockResolvedValue(status)
+
+      const response = await request(createApp())
+        .get('/api/ai/embeddings/status')
+        .set('Cookie', AUTH_COOKIE)
+
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual(status)
     })
   })
 })

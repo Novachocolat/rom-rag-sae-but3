@@ -14,6 +14,11 @@ const TITLES = [
   'Tetris (World)',
 ]
 
+// Measured with embeddinggemma on bare titles: siblings at about 0.6-0.7, the
+// unrelated game at about 0.45. The ranking matters, not an absolute 0.9
+const MIN_SIBLING_SIMILARITY = 0.5
+const MIN_MARGIN_OVER_INTRUDER = 0.1
+
 // The demonstration expected by US-4.1: the sibling Pokemon versions come first
 describe.skipIf(!enabled)('embedding backfill and nearest neighbours', () => {
   const userId = randomUUID()
@@ -55,14 +60,20 @@ describe.skipIf(!enabled)('embedding backfill and nearest neighbours', () => {
     await prisma.$disconnect()
   })
 
-  it('ranks the Bleue and Jaune versions first, above 0.9', async () => {
+  it('ranks the Bleue and Jaune versions before an unrelated game', async () => {
     const neighbours = await findNearest(romIds[0] as string, 3, 0)
+    const siblings = neighbours.slice(0, 2)
+    const intruder = neighbours[2]
 
-    expect(neighbours.slice(0, 2).map((n) => n.title)).toEqual(
+    expect(siblings.map((n) => n.title)).toEqual(
       expect.arrayContaining([TITLES[1], TITLES[2]]),
     )
-    for (const neighbour of neighbours.slice(0, 2)) {
-      expect(neighbour.similarity).toBeGreaterThan(0.9)
+    expect(intruder?.title).toBe(TITLES[3])
+    for (const sibling of siblings) {
+      expect(sibling.similarity).toBeGreaterThan(MIN_SIBLING_SIMILARITY)
+      expect(sibling.similarity - (intruder?.similarity ?? 0)).toBeGreaterThan(
+        MIN_MARGIN_OVER_INTRUDER,
+      )
     }
   })
 })

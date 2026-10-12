@@ -1,3 +1,5 @@
+// Pure grouping pipeline: no database or LLM access. Everything it needs is
+// passed in, so each stage can be unit-tested with plain objects.
 import { normalizeTitle } from './title-normalizer.service.js'
 
 export interface GroupableRom {

@@ -22,10 +22,18 @@ export interface ListCollectionsInput {
   pageSize: number
 }
 
+// Changes of one update; every field is optional and they are applied together
+export interface CollectionChanges {
+  canonicalTitle?: string
+  addRomIds?: string[]
+  removeRomIds?: string[]
+}
+
 // What the grouping stages need to know about a ROM
 export interface GroupingRomRow {
   id: string
   fileName: string
+  title: string | null
   platformId: string | null
   sha1: string
   sha1Data: string | null
@@ -33,22 +41,15 @@ export interface GroupingRomRow {
   cloneOfId: string | null
 }
 
-export interface RomNeighbor {
-  romId: string
-  similarity: number
-}
-
-export interface MemberSimilarity {
-  romA: string
-  romB: string
-  similarity: number
-}
-
 function notFound(id: string): AppError {
   return AppError.notFound('COLLECTION_NOT_FOUND', `Collection ${id} not found`)
 }
 
-// Throws unless the collection exists and belongs to the user
+/**
+ * Loads a collection of the user.
+ * @throws {AppError} 404 COLLECTION_NOT_FOUND when it does not exist or
+ * belongs to someone else
+ */
 async function assertOwned(userId: string, collectionId: string) {
   const collection = await prisma.collection.findFirst({
     where: { id: collectionId, userId },
@@ -57,7 +58,11 @@ async function assertOwned(userId: string, collectionId: string) {
   return collection
 }
 
-// A collection must only ever hold the user's own ROMs
+/**
+ * Checks that every ROM belongs to the user: a collection must only ever hold
+ * its owner's ROMs.
+ * @throws {AppError} 404 ROM_NOT_FOUND when at least one is missing or foreign
+ */
 async function assertRomsOwned(
   userId: string,
   romIds: string[],
@@ -73,11 +78,33 @@ async function assertRomsOwned(
   }
 }
 
-// A ROM can only appear once per collection (composite primary key)
+/**
+ * Checks that the platform exists, so an unknown id answers 404 instead of
+ * failing on the foreign key.
+ * @throws {AppError} 404 PLATFORM_NOT_FOUND
+ */
+async function assertPlatformExists(platformId: string): Promise<void> {
+  const found = await prisma.platform.count({ where: { id: platformId } })
+  if (found === 0) {
+    throw AppError.notFound(
+      'PLATFORM_NOT_FOUND',
+      `Platform ${platformId} not found`,
+    )
+  }
+}
+
+// A ROM can only appear once per collection (composite primary key); the last
+// entry of a repeated ROM wins
 function uniqueMembers(members: CollectionMemberInput[]) {
   return [...new Map(members.map((member) => [member.romId, member])).values()]
 }
 
+/**
+ * Creates a collection and its members in one write.
+ * @returns The collection with its member count (`_count.members`)
+ * @throws {AppError} 404 ROM_NOT_FOUND when a member is not one of the user's
+ * ROMs, 404 PLATFORM_NOT_FOUND when the platform does not exist
+ */
 export async function createCollection(input: CreateCollectionInput) {
   const { members = [], ...data } = input
   const unique = uniqueMembers(members)
@@ -85,6 +112,7 @@ export async function createCollection(input: CreateCollectionInput) {
     input.userId,
     unique.map((member) => member.romId),
   )
+  if (input.platformId) await assertPlatformExists(input.platformId)
 
   return prisma.collection.create({
     data: {
@@ -100,30 +128,11 @@ export async function createCollection(input: CreateCollectionInput) {
   })
 }
 
-// Already present members are skipped, so the call can be repeated safely
-export async function addMembers(
-  userId: string,
-  collectionId: string,
-  members: CollectionMemberInput[],
-): Promise<number> {
-  await assertOwned(userId, collectionId)
-  const unique = uniqueMembers(members)
-  await assertRomsOwned(
-    userId,
-    unique.map((member) => member.romId),
-  )
-
-  const { count } = await prisma.collectionMember.createMany({
-    data: unique.map((member) => ({
-      collectionId,
-      romId: member.romId,
-      variantLabel: member.variantLabel ?? null,
-    })),
-    skipDuplicates: true,
-  })
-  return count
-}
-
+/**
+ * Lists the user's collections, newest first.
+ * @returns The requested page with member counts, and the total number of
+ * collections
+ */
 export async function listCollections(input: ListCollectionsInput) {
   const where = { userId: input.userId }
 
@@ -141,6 +150,10 @@ export async function listCollections(input: ListCollectionsInput) {
   return { collections, total }
 }
 
+/**
+ * Loads a collection with its members and a summary of each ROM.
+ * @throws {AppError} 404 COLLECTION_NOT_FOUND
+ */
 export async function getCollectionWithRoms(userId: string, id: string) {
   const collection = await prisma.collection.findFirst({
     where: { id, userId },
@@ -165,16 +178,62 @@ export async function getCollectionWithRoms(userId: string, id: string) {
   return collection
 }
 
+/**
+ * Renames a collection, adds members and removes members, all in one
+ * transaction: a change that fails leaves the collection untouched.
+ * A ROM that is already a member is not added twice.
+ * @throws {AppError} 404 COLLECTION_NOT_FOUND, 404 ROM_NOT_FOUND when a ROM to
+ * add is not the user's, 404 COLLECTION_MEMBER_NOT_FOUND when a ROM to remove
+ * is not a member
+ */
 export async function updateCollection(
   userId: string,
   id: string,
-  data: { canonicalTitle: string },
-) {
+  changes: CollectionChanges,
+): Promise<void> {
+  const toAdd = [...new Set(changes.addRomIds ?? [])]
+  const toRemove = [...new Set(changes.removeRomIds ?? [])]
+
   await assertOwned(userId, id)
-  return prisma.collection.update({ where: { id }, data })
+  await assertRomsOwned(userId, toAdd)
+
+  await prisma.$transaction(async (tx) => {
+    if (changes.canonicalTitle !== undefined) {
+      await tx.collection.update({
+        where: { id },
+        data: { canonicalTitle: changes.canonicalTitle },
+      })
+    }
+
+    if (toAdd.length > 0) {
+      await tx.collectionMember.createMany({
+        data: toAdd.map((romId) => ({ collectionId: id, romId })),
+        skipDuplicates: true,
+      })
+    }
+
+    if (toRemove.length > 0) {
+      const { count } = await tx.collectionMember.deleteMany({
+        where: { collectionId: id, romId: { in: toRemove } },
+      })
+      // Throwing rolls the whole update back
+      if (count !== toRemove.length) {
+        throw AppError.notFound(
+          'COLLECTION_MEMBER_NOT_FOUND',
+          `One or more ROMs are not in collection ${id}`,
+        )
+      }
+    }
+  })
 }
 
-// Moves every member of `sourceId` into `targetId`, then dissolves `sourceId`
+/**
+ * Moves every member of `sourceId` into `targetId`, then deletes `sourceId`,
+ * in one transaction. A ROM present in both keeps the target's variant label,
+ * and the AI proposals of the source follow its members.
+ * @throws {AppError} 400 INVALID_MERGE when both ids are equal, 404
+ * COLLECTION_NOT_FOUND when one of them is not the user's
+ */
 export async function mergeCollections(
   userId: string,
   targetId: string,
@@ -190,64 +249,66 @@ export async function mergeCollections(
   await assertOwned(userId, sourceId)
 
   await prisma.$transaction(async (tx) => {
-    const transaction = tx as typeof prisma
-    const moved: Array<{ romId: string; variantLabel: string | null }> =
-      await transaction.collectionMember.findMany({
-        where: { collectionId: sourceId },
-      })
-    await transaction.collectionMember.createMany({
-      data: moved.map(
-        (member: { romId: string; variantLabel: string | null }) => ({
-          collectionId: targetId,
-          romId: member.romId,
-          variantLabel: member.variantLabel,
-        }),
-      ),
-      skipDuplicates: true,
-    })
-    await transaction.collectionMember.deleteMany({
+    const moved = await tx.collectionMember.findMany({
       where: { collectionId: sourceId },
     })
-    await transaction.collection.delete({ where: { id: sourceId } })
+    await tx.collectionMember.createMany({
+      data: moved.map((member) => ({
+        collectionId: targetId,
+        romId: member.romId,
+        variantLabel: member.variantLabel,
+      })),
+      skipDuplicates: true,
+    })
+    await tx.collectionMember.deleteMany({ where: { collectionId: sourceId } })
+    await tx.aiProposal.updateMany({
+      where: { collectionId: sourceId },
+      data: { collectionId: targetId },
+    })
+    await tx.collection.delete({ where: { id: sourceId } })
   })
 }
 
-export async function removeMember(
-  userId: string,
-  collectionId: string,
-  romId: string,
-): Promise<void> {
-  const { count } = await prisma.collectionMember.deleteMany({
-    where: { collectionId, romId, collection: { userId } },
-  })
-  if (count === 0) {
-    throw AppError.notFound(
-      'COLLECTION_MEMBER_NOT_FOUND',
-      `ROM ${romId} is not in collection ${collectionId}`,
-    )
-  }
-}
-
-// Dissolves the collection; the ROMs themselves are kept
+/**
+ * Dissolves a collection; the ROMs themselves are kept.
+ * Dissolving is how a user refuses an AI grouping, so the proposal that created
+ * the collection is closed as REJECTED and detached from it.
+ * @throws {AppError} 404 COLLECTION_NOT_FOUND
+ */
 export async function deleteCollection(
   userId: string,
   id: string,
 ): Promise<void> {
   await assertOwned(userId, id)
+  const reviewedAt = new Date()
+
   await prisma.$transaction([
+    prisma.aiProposal.updateMany({
+      where: { collectionId: id, status: 'PENDING' },
+      data: { status: 'REJECTED', reviewedAt, reviewedById: userId },
+    }),
+    prisma.aiProposal.updateMany({
+      where: { collectionId: id },
+      data: { collectionId: null },
+    }),
     prisma.collectionMember.deleteMany({ where: { collectionId: id } }),
     prisma.collection.delete({ where: { id } }),
   ])
 }
 
-// The user's ROMs with the catalog ids stages 1 and 2 rely on. With
-// `onlyUngrouped`, ROMs that already belong to a collection are left out, so
-// a second detection never builds the same collection twice.
+/**
+ * Lists the user's ROMs with what the grouping stages rely on: file name,
+ * title, hashes and the DAT ids of the matched catalog entry.
+ * @param options.onlyUngrouped - Leaves out the ROMs already in a collection,
+ * so a second detection never builds the same collection twice
+ * @returns One row per ROM; `gameExternalId` and `cloneOfId` are null for a ROM
+ * without DAT entry
+ */
 export async function listRomsForGrouping(
   userId: string,
   options: { onlyUngrouped?: boolean } = {},
 ): Promise<GroupingRomRow[]> {
-  const roms = (await prisma.rom.findMany({
+  const roms = await prisma.rom.findMany({
     where: {
       userId,
       ...(options.onlyUngrouped && { collectionMembers: { none: {} } }),
@@ -255,105 +316,17 @@ export async function listRomsForGrouping(
     select: {
       id: true,
       fileName: true,
+      title: true,
       platformId: true,
       sha1: true,
       sha1Data: true,
       datEntry: { select: { gameExternalId: true, cloneOfId: true } },
     },
-  })) as Array<{
-    id: string
-    fileName: string
-    platformId: string | null
-    sha1: string
-    sha1Data: string | null
-    datEntry: { gameExternalId: string | null; cloneOfId: string | null } | null
-  }>
+  })
 
-  return roms.map(
-    (rom: {
-      id: string
-      fileName: string
-      platformId: string | null
-      sha1: string
-      sha1Data: string | null
-      datEntry: {
-        gameExternalId: string | null
-        cloneOfId: string | null
-      } | null
-    }) => {
-      const { datEntry, ...romData } = rom
-      return {
-        ...romData,
-        gameExternalId: datEntry?.gameExternalId ?? null,
-        cloneOfId: datEntry?.cloneOfId ?? null,
-      }
-    },
-  )
-}
-
-// Nearest ROMs of the same user by cosine similarity (1 = identical). The
-// subquery form lets pgvector use its index; a ROM without embedding has none.
-export async function findNeighbors(
-  userId: string,
-  romId: string,
-  limit: number,
-): Promise<RomNeighbor[]> {
-  const rows = (await prisma.$queryRaw<
-    Array<{ romId: string; similarity: number | string | null }>
-  >`
-    SELECT e."romId" AS "romId",
-           1 - (e."embedding" <=> (
-             SELECT "embedding" FROM "RomEmbedding" WHERE "romId" = ${romId}
-           )) AS "similarity"
-    FROM "RomEmbedding" e
-    JOIN "Rom" r ON r."id" = e."romId"
-    WHERE e."romId" <> ${romId}
-      AND r."userId" = ${userId}
-      AND EXISTS (SELECT 1 FROM "RomEmbedding" WHERE "romId" = ${romId})
-    ORDER BY e."embedding" <=> (
-      SELECT "embedding" FROM "RomEmbedding" WHERE "romId" = ${romId}
-    )
-    LIMIT ${limit}
-  `) as Array<{ romId: string; similarity: number | string | null }>
-  return rows.map(
-    (row: { romId: string; similarity: number | string | null }) => ({
-      romId: row.romId,
-      similarity: Number(row.similarity),
-    }),
-  )
-}
-
-// Pairwise cosine similarity between ROMs, most similar pair first
-export async function getMemberSimilarities(
-  romIds: string[],
-): Promise<MemberSimilarity[]> {
-  if (romIds.length < 2) return []
-
-  const rows = (await prisma.$queryRaw<
-    Array<{ romA: string; romB: string; similarity: number | string | null }>
-  >`
-    SELECT a."romId" AS "romA",
-           b."romId" AS "romB",
-           1 - (a."embedding" <=> b."embedding") AS "similarity"
-    FROM "RomEmbedding" a
-    JOIN "RomEmbedding" b ON a."romId" < b."romId"
-    WHERE a."romId" = ANY(${romIds}::text[])
-      AND b."romId" = ANY(${romIds}::text[])
-    ORDER BY "similarity" DESC
-  `) as Array<{
-    romA: string
-    romB: string
-    similarity: number | string | null
-  }>
-  return rows.map(
-    (row: {
-      romA: string
-      romB: string
-      similarity: number | string | null
-    }) => ({
-      romA: row.romA,
-      romB: row.romB,
-      similarity: Number(row.similarity),
-    }),
-  )
+  return roms.map(({ datEntry, ...rom }) => ({
+    ...rom,
+    gameExternalId: datEntry?.gameExternalId ?? null,
+    cloneOfId: datEntry?.cloneOfId ?? null,
+  }))
 }

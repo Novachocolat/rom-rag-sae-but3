@@ -55,6 +55,7 @@ rootRouter.use(aiRouter)
  * GET /collections/:id
  * POST /collections
  * PATCH /collections/:id
+ * POST /collections/:id/merge
  * DELETE /collections/:id
  */
 rootRouter.use(collectionRouter)

@@ -7,6 +7,7 @@ import {
   countEmbeddings,
   findNearest,
   findRomsWithoutEmbedding,
+  getMemberSimilarities,
   upsertEmbedding,
 } from './embedding.storage.js'
 
@@ -101,6 +102,22 @@ describe.skipIf(!enabled)('embedding.storage on PostgreSQL', () => {
 
     expect(returned).not.toContain(ids.foreign)
     expect(returned).not.toContain(ids.base)
+  })
+
+  it('returns each pair of ROMs once, most similar first', async () => {
+    const pairs = await getMemberSimilarities([
+      ids.base as string,
+      ids.close as string,
+      ids.far as string,
+      ids.none as string,
+    ])
+
+    // `none` has no vector, so only the three embedded ROMs are paired
+    expect(pairs).toHaveLength(3)
+    expect([pairs[0]?.romA, pairs[0]?.romB].sort()).toEqual(
+      [ids.base, ids.close].sort(),
+    )
+    expect(pairs[0]?.similarity).toBeGreaterThan(0.99)
   })
 
   it('updates the vector in place on a second upsert', async () => {

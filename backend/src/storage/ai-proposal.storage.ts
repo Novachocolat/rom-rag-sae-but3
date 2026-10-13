@@ -38,6 +38,21 @@ export function createProposal(input: CreateProposalInput) {
   })
 }
 
+// A grouping proposal is anchored to exactly one row, which is also what ties
+// it to a user: the collection it created, or, for an answer kept for audit
+// only, one ROM of the cluster the model was asked about
+export type CreateGroupingProposalInput = Omit<CreateProposalInput, 'romId'> &
+  ({ collectionId: string } | { romId: string })
+
+/**
+ * Records what the model answered about a candidate cluster.
+ * These rows never show up in the identification review queue, which only
+ * lists the IDENTIFICATION kind.
+ */
+export function createGroupingProposal(input: CreateGroupingProposalInput) {
+  return prisma.aiProposal.create({ data: { kind: 'GROUPING', ...input } })
+}
+
 // Proposals of one user, newest first: the review queue when filtered by status, the history of a ROM when filtered by `romId`
 export async function listProposals(input: ListProposalsInput) {
   const where = {

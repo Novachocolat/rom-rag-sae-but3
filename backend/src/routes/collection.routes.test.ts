@@ -2,6 +2,7 @@ import express from 'express'
 import type { NextFunction, Request, Response } from 'express'
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { OllamaUnavailableError } from '../client/ollama/ollama.error.js'
 import { AppError } from '../lib/error.js'
 import { startJob } from '../lib/job-runner.js'
 import { errorMiddleware } from '../middleware/error.middleware.js'
@@ -10,19 +11,22 @@ import {
   proposeGroupings,
   type GroupingOutcome,
 } from '../service/ai-grouping.service.js'
+import { createGroupingProposal } from '../storage/ai-proposal.storage.js'
 import {
-  addMembers,
   createCollection,
   deleteCollection,
-  findNeighbors,
   getCollectionWithRoms,
-  getMemberSimilarities,
   listCollections,
   listRomsForGrouping,
-  removeMember,
+  mergeCollections,
   updateCollection,
+  type GroupingRomRow,
 } from '../storage/collection.storage.js'
 import { listPlatforms } from '../storage/dat.storage.js'
+import {
+  findNearest,
+  getMemberSimilarities,
+} from '../storage/embedding.storage.js'
 import { collectionRouter } from './collection.routes.js'
 
 vi.mock('../middleware/require-auth.middleware.js', () => ({
@@ -35,19 +39,24 @@ vi.mock('../lib/prisma.js', () => ({ prisma: {} }))
 vi.mock('../lib/job-runner.js', () => ({ startJob: vi.fn() }))
 vi.mock('../storage/dat.storage.js', () => ({ listPlatforms: vi.fn() }))
 vi.mock('../service/ai-grouping.service.js', () => ({
+  GROUPING_PROMPT: { name: 'grouping', version: 'v1' },
   buildGroupingPorts: vi.fn(),
   proposeGroupings: vi.fn(),
 }))
+vi.mock('../storage/ai-proposal.storage.js', () => ({
+  createGroupingProposal: vi.fn(),
+}))
+vi.mock('../storage/embedding.storage.js', () => ({
+  findNearest: vi.fn(),
+  getMemberSimilarities: vi.fn(),
+}))
 vi.mock('../storage/collection.storage.js', () => ({
-  addMembers: vi.fn(),
   createCollection: vi.fn(),
   deleteCollection: vi.fn(),
-  findNeighbors: vi.fn(),
   getCollectionWithRoms: vi.fn(),
-  getMemberSimilarities: vi.fn(),
   listCollections: vi.fn(),
   listRomsForGrouping: vi.fn(),
-  removeMember: vi.fn(),
+  mergeCollections: vi.fn(),
   updateCollection: vi.fn(),
 }))
 
@@ -63,10 +72,15 @@ function buildApp() {
   return app
 }
 
-function makeRow(id: string, fileName: string, sha1 = `sha1-${id}`) {
+function makeRow(
+  id: string,
+  fileName: string,
+  sha1 = `sha1-${id}`,
+): GroupingRomRow {
   return {
     id,
     fileName,
+    title: null,
     platformId: PLATFORM_ID,
     sha1,
     sha1Data: null,
@@ -80,7 +94,7 @@ function makeOutcome(
 ): GroupingOutcome {
   return {
     decision: 'PROPOSED',
-    canonicalTitle: 'alpha quest',
+    canonicalTitle: 'Alpha Quest',
     members: [
       { romId: 'x', variantLabel: null },
       { romId: 'y', variantLabel: 'II' },
@@ -89,12 +103,24 @@ function makeOutcome(
     confidence: 0.9,
     reasoning: 'Same game',
     issues: [],
-    raw: '{}',
+    raw: '{"raw":true}',
     model: 'test-model',
     durationMs: 1,
     promptTokens: 1,
     completionTokens: 1,
     ...overrides,
+  }
+}
+
+function makeDetail() {
+  return {
+    id: ID,
+    canonicalTitle: 'Tetris',
+    source: 'MANUAL',
+    confidence: null,
+    platformId: null,
+    createdAt: new Date('2026-10-01T10:00:00Z'),
+    members: [],
   }
 }
 
@@ -108,6 +134,25 @@ function captureJob(): () => Promise<unknown> {
   return () => job
 }
 
+// Two isolated ROMs that the embeddings put next to each other
+function mockSemanticPair(): void {
+  vi.mocked(listRomsForGrouping).mockResolvedValue([
+    makeRow('x', 'Alpha Quest.gb'),
+    makeRow('y', 'Alpha Quest II.gb'),
+  ])
+  vi.mocked(findNearest).mockImplementation((romId) =>
+    Promise.resolve(
+      romId === 'x'
+        ? [{ romId: 'y', fileName: 'y', title: null, similarity: 0.95 }]
+        : [],
+    ),
+  )
+  vi.mocked(listPlatforms).mockResolvedValue([
+    { id: PLATFORM_ID, name: 'Game Boy', slug: 'gb', extensions: ['.gb'] },
+  ] as never)
+  vi.mocked(createCollection).mockResolvedValue({ id: 'collection-1' } as never)
+}
+
 describe('collection.routes', () => {
   beforeEach(() => {
     vi.resetAllMocks()
@@ -115,30 +160,48 @@ describe('collection.routes', () => {
 
   describe('POST /api/collections/detect', () => {
     it('answers 202 with the job id', async () => {
-      vi.mocked(startJob).mockReturnValue('job-1')
+      const waitForJob = captureJob()
+      vi.mocked(listRomsForGrouping).mockResolvedValue([])
 
       const res = await request(buildApp()).post('/api/collections/detect')
+      await waitForJob()
 
       expect(res.status).toBe(202)
       expect(res.body).toEqual({ jobId: 'job-1' })
     })
 
-    it('builds the DAT collections, then an AI collection for isolated ROMs', async () => {
+    it('answers 409 while a detection of the same user is running', async () => {
       const waitForJob = captureJob()
+      let finish: (rows: GroupingRomRow[]) => void = () => undefined
+      vi.mocked(listRomsForGrouping).mockReturnValue(
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+      )
+
+      const first = await request(buildApp()).post('/api/collections/detect')
+      const second = await request(buildApp()).post('/api/collections/detect')
+      finish([])
+      await waitForJob()
+      const third = await request(buildApp()).post('/api/collections/detect')
+      await waitForJob()
+
+      expect(first.status).toBe(202)
+      expect(second.status).toBe(409)
+      expect(second.body.error.code).toBe('DETECTION_ALREADY_RUNNING')
+      // The guard is released once the first run is over
+      expect(third.status).toBe(202)
+    })
+
+    it('builds the catalog collections, then an AI collection for isolated ROMs', async () => {
+      const waitForJob = captureJob()
+      mockSemanticPair()
       vi.mocked(listRomsForGrouping).mockResolvedValue([
         makeRow('usa', 'Tetris (USA).gb'),
         makeRow('eur', 'Tetris (Europe).gb'),
         makeRow('x', 'Alpha Quest.gb'),
         makeRow('y', 'Alpha Quest II.gb'),
       ])
-      vi.mocked(findNeighbors).mockImplementation((_user, romId) =>
-        Promise.resolve(
-          romId === 'x' ? [{ romId: 'y', similarity: 0.95 }] : [],
-        ),
-      )
-      vi.mocked(listPlatforms).mockResolvedValue([
-        { id: PLATFORM_ID, name: 'Game Boy', slug: 'gb', extensions: ['.gb'] },
-      ] as never)
       vi.mocked(proposeGroupings).mockResolvedValue([makeOutcome()])
 
       await request(buildApp()).post('/api/collections/detect')
@@ -147,12 +210,13 @@ describe('collection.routes', () => {
       expect(listRomsForGrouping).toHaveBeenCalledWith('user-1', {
         onlyUngrouped: true,
       })
+      expect(findNearest).toHaveBeenCalledWith('x', 10, 0.85)
       expect(createCollection).toHaveBeenCalledTimes(2)
       expect(createCollection).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
           userId: 'user-1',
-          canonicalTitle: 'tetris',
+          canonicalTitle: 'Tetris',
           platformId: PLATFORM_ID,
           source: 'DAT_CLONE',
           confidence: 0.95,
@@ -161,7 +225,7 @@ describe('collection.routes', () => {
       expect(createCollection).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({
-          canonicalTitle: 'alpha quest',
+          canonicalTitle: 'Alpha Quest',
           source: 'AI',
           confidence: 0.9,
           platformId: PLATFORM_ID,
@@ -169,27 +233,71 @@ describe('collection.routes', () => {
       )
     })
 
-    it('does not create a collection from an unsure or rejected proposal', async () => {
+    it('links the AI collection to a pending proposal holding the audit trail', async () => {
       const waitForJob = captureJob()
-      vi.mocked(listRomsForGrouping).mockResolvedValue([
-        makeRow('x', 'Alpha Quest.gb'),
-        makeRow('y', 'Alpha Quest II.gb'),
-      ])
-      vi.mocked(findNeighbors).mockImplementation((_user, romId) =>
-        Promise.resolve(
-          romId === 'x' ? [{ romId: 'y', similarity: 0.95 }] : [],
-        ),
+      mockSemanticPair()
+      vi.mocked(proposeGroupings).mockResolvedValue([makeOutcome()])
+
+      await request(buildApp()).post('/api/collections/detect')
+      await waitForJob()
+
+      expect(createGroupingProposal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collectionId: 'collection-1',
+          status: 'PENDING',
+          rawResponse: '{"raw":true}',
+          model: 'test-model',
+          promptName: 'grouping',
+          promptVersion: 'v1',
+          confidence: 0.9,
+        }),
       )
-      vi.mocked(listPlatforms).mockResolvedValue([] as never)
+    })
+
+    it('creates no collection from an unsure or refused answer, but keeps it for audit', async () => {
+      const waitForJob = captureJob()
+      mockSemanticPair()
       vi.mocked(proposeGroupings).mockResolvedValue([
         makeOutcome({ decision: 'LOW_CONFIDENCE' }),
-        makeOutcome({ decision: 'NOT_SAME_GAME' }),
+        makeOutcome({
+          decision: 'NOT_SAME_GAME',
+          members: [],
+          removedRomIds: ['x', 'y'],
+        }),
       ])
 
       await request(buildApp()).post('/api/collections/detect')
       await waitForJob()
 
       expect(createCollection).not.toHaveBeenCalled()
+      expect(createGroupingProposal).toHaveBeenCalledTimes(2)
+      expect(createGroupingProposal).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ romId: 'x', status: 'REJECTED' }),
+      )
+    })
+
+    it('keeps the catalog collections when Ollama is down (degraded mode)', async () => {
+      const waitForJob = captureJob()
+      mockSemanticPair()
+      vi.mocked(listRomsForGrouping).mockResolvedValue([
+        makeRow('usa', 'Tetris (USA).gb'),
+        makeRow('eur', 'Tetris (Europe).gb'),
+        makeRow('x', 'Alpha Quest.gb'),
+        makeRow('y', 'Alpha Quest II.gb'),
+      ])
+      vi.mocked(proposeGroupings).mockRejectedValue(
+        new OllamaUnavailableError('down'),
+      )
+
+      await request(buildApp()).post('/api/collections/detect')
+
+      await expect(waitForJob()).resolves.toBeUndefined()
+      expect(createCollection).toHaveBeenCalledTimes(1)
+      expect(createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'DAT_CLONE' }),
+      )
+      expect(createGroupingProposal).not.toHaveBeenCalled()
     })
 
     it('skips the model when no isolated ROM has a close neighbor', async () => {
@@ -198,7 +306,7 @@ describe('collection.routes', () => {
         makeRow('x', 'Alpha Quest.gb'),
         makeRow('y', 'Beta Quest.gb'),
       ])
-      vi.mocked(findNeighbors).mockResolvedValue([])
+      vi.mocked(findNearest).mockResolvedValue([])
 
       await request(buildApp()).post('/api/collections/detect')
       await waitForJob()
@@ -214,7 +322,7 @@ describe('collection.routes', () => {
         collections: [
           {
             id: ID,
-            canonicalTitle: 'tetris',
+            canonicalTitle: 'Tetris',
             source: 'DAT_CLONE',
             confidence: 0.95,
             platformId: PLATFORM_ID,
@@ -222,7 +330,7 @@ describe('collection.routes', () => {
             _count: { members: 3 },
           },
         ],
-        total: 1,
+        total: 11,
       } as never)
 
       const res = await request(buildApp()).get(
@@ -230,8 +338,14 @@ describe('collection.routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(res.body.total).toBe(1)
-      expect(res.body.items[0].memberCount).toBe(3)
+      expect(res.body.data[0].memberCount).toBe(3)
+      expect(res.body.data[0].createdAt).toBe('2026-10-01T10:00:00.000Z')
+      expect(res.body.pagination).toEqual({
+        page: 1,
+        pageSize: 10,
+        total: 11,
+        totalPages: 2,
+      })
       expect(listCollections).toHaveBeenCalledWith({
         userId: 'user-1',
         page: 1,
@@ -267,12 +381,9 @@ describe('collection.routes', () => {
   describe('GET /api/collections/:id', () => {
     it('returns the members and their similarities', async () => {
       vi.mocked(getCollectionWithRoms).mockResolvedValue({
-        id: ID,
-        canonicalTitle: 'tetris',
+        ...makeDetail(),
         source: 'AI',
         confidence: 0.9,
-        platformId: PLATFORM_ID,
-        createdAt: new Date('2026-10-01T10:00:00Z'),
         members: [
           {
             romId: 'a',
@@ -357,16 +468,8 @@ describe('collection.routes', () => {
   })
 
   describe('PATCH /api/collections/:id', () => {
-    it('renames, adds and removes members', async () => {
-      vi.mocked(getCollectionWithRoms).mockResolvedValue({
-        id: ID,
-        canonicalTitle: 'new title',
-        source: 'MANUAL',
-        confidence: null,
-        platformId: null,
-        createdAt: new Date(),
-        members: [],
-      } as never)
+    it('hands every change to one storage call', async () => {
+      vi.mocked(getCollectionWithRoms).mockResolvedValue(makeDetail() as never)
       vi.mocked(getMemberSimilarities).mockResolvedValue([])
 
       const res = await request(buildApp())
@@ -378,13 +481,12 @@ describe('collection.routes', () => {
         })
 
       expect(res.status).toBe(200)
+      expect(updateCollection).toHaveBeenCalledTimes(1)
       expect(updateCollection).toHaveBeenCalledWith('user-1', ID, {
         canonicalTitle: 'new title',
+        addRomIds: [OTHER_ID],
+        removeRomIds: [PLATFORM_ID],
       })
-      expect(addMembers).toHaveBeenCalledWith('user-1', ID, [
-        { romId: OTHER_ID },
-      ])
-      expect(removeMember).toHaveBeenCalledWith('user-1', ID, PLATFORM_ID)
     })
 
     it('answers 400 when there is nothing to update', async () => {
@@ -393,6 +495,31 @@ describe('collection.routes', () => {
         .send({})
 
       expect(res.status).toBe(400)
+      expect(updateCollection).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('POST /api/collections/:id/merge', () => {
+    it('merges the source into the collection of the URL', async () => {
+      vi.mocked(getCollectionWithRoms).mockResolvedValue(makeDetail() as never)
+      vi.mocked(getMemberSimilarities).mockResolvedValue([])
+
+      const res = await request(buildApp())
+        .post(`/api/collections/${ID}/merge`)
+        .send({ sourceId: OTHER_ID })
+
+      expect(res.status).toBe(200)
+      expect(res.body.id).toBe(ID)
+      expect(mergeCollections).toHaveBeenCalledWith('user-1', ID, OTHER_ID)
+    })
+
+    it('answers 400 without a source', async () => {
+      const res = await request(buildApp())
+        .post(`/api/collections/${ID}/merge`)
+        .send({})
+
+      expect(res.status).toBe(400)
+      expect(mergeCollections).not.toHaveBeenCalled()
     })
   })
 

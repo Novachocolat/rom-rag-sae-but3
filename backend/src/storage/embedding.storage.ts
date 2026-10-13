@@ -81,6 +81,36 @@ export async function findNearest(
   `)
 }
 
+export interface RomPairSimilarity {
+  romA: string
+  romB: string
+  // 1 - cosine distance, so 1 means identical direction
+  similarity: number
+}
+
+/**
+ * Cosine similarity of every pair among the given ROMs, most similar first.
+ * Each pair appears once (`romA` < `romB`) and a ROM without vector is absent.
+ * There is no owner filter: the caller passes ROMs it has already checked.
+ */
+export async function getMemberSimilarities(
+  romIds: string[],
+): Promise<RomPairSimilarity[]> {
+  if (romIds.length < 2) return []
+
+  return prisma.$queryRaw<RomPairSimilarity[]>(Prisma.sql`
+    SELECT
+      a."romId" AS "romA",
+      b."romId" AS "romB",
+      1 - (a."embedding" <=> b."embedding") AS "similarity"
+    FROM "RomEmbedding" a
+    JOIN "RomEmbedding" b ON a."romId" < b."romId"
+    WHERE a."romId" = ANY(${romIds}::text[])
+      AND b."romId" = ANY(${romIds}::text[])
+    ORDER BY "similarity" DESC
+  `)
+}
+
 export function countEmbeddings(userId: string): Promise<number> {
   return prisma.romEmbedding.count({ where: { rom: { userId } } })
 }

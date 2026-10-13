@@ -1,3 +1,4 @@
+import type { CollectionGrouping } from '@repo/shared/types'
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildGroupingVariables,
@@ -7,7 +8,6 @@ import {
   proposeGroupings,
   splitForPrompt,
   type ClusterRom,
-  type CollectionGrouping,
   type GroupingPorts,
 } from './ai-grouping.service.js'
 
@@ -53,7 +53,10 @@ function makePorts(data: CollectionGrouping, confidenceThreshold = 0.75) {
   })
   const ports: GroupingPorts = {
     llm: { generateJson },
-    renderPrompt: (variables) => variables.roms ?? '',
+    renderPrompt: (variables) => ({
+      system: 'system rules',
+      user: variables.roms ?? '',
+    }),
     confidenceThreshold,
   }
   return { ports, generateJson }
@@ -74,6 +77,19 @@ describe('proposeGrouping', () => {
     ])
     expect(outcome.members[1]?.variantLabel).toBe('Europe')
     expect(outcome.removedRomIds).toEqual([])
+  })
+
+  it('sends the system message and the user prompt separately', async () => {
+    const { ports, generateJson } = makePorts(makeGrouping())
+
+    await proposeGrouping(makeRoms(['a', 'b', 'c']), ports)
+
+    expect(generateJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        system: 'system rules',
+        prompt: expect.stringContaining('- a | Tetris (a).gb'),
+      }),
+    )
   })
 
   it('never accepts a romId the model invented', async () => {
@@ -203,6 +219,25 @@ describe('proposeGroupings', () => {
 
     expect(generateJson).toHaveBeenCalledTimes(1)
     expect(outcomes).toHaveLength(1)
+  })
+
+  it('keeps the variants of one game in the same chunk', async () => {
+    const { ports, generateJson } = makePorts(makeGrouping())
+    const roms: ClusterRom[] = [
+      { id: 'z1', fileName: 'Zelda (USA).gb', platformName: 'Game Boy' },
+      ...makeIds(MAX_ROMS_PER_CALL).map((id) => ({
+        id,
+        fileName: `Game ${id.slice(1).padStart(2, '0')}.gb`,
+        platformName: 'Game Boy',
+      })),
+      { id: 'z2', fileName: 'Zelda (Europe).gb', platformName: 'Game Boy' },
+    ]
+
+    await proposeGroupings(roms, ports)
+
+    const lastPrompt = generateJson.mock.calls.at(-1)?.[0] as { prompt: string }
+    expect(lastPrompt.prompt).toContain('- z1 |')
+    expect(lastPrompt.prompt).toContain('- z2 |')
   })
 })
 

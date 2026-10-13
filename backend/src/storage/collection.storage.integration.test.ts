@@ -2,16 +2,17 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '../lib/prisma.js'
 import {
-  addMembers,
   createCollection,
-  findNeighbors,
-  getMemberSimilarities,
+  deleteCollection,
+  getCollectionWithRoms,
   listRomsForGrouping,
+  mergeCollections,
+  updateCollection,
 } from './collection.storage.js'
 
-// Integration tests need a real PostgreSQL (`docker compose up -d postgres`):
-// they are skipped on CI, which has none
-const describeDb = process.env.CI ? describe.skip : describe
+// Needs a migrated PostgreSQL (`docker compose up -d postgres`); opt-in, like
+// the other database integration tests
+const enabled = process.env.RUN_DB_INTEGRATION === '1'
 
 let userId: string
 let otherUserId: string
@@ -34,20 +35,13 @@ async function createRom(name: string, owner: string): Promise<string> {
   return rom.id
 }
 
-// A 768-dimension vector (the embedding size), zero-padded after `head`
-function vector(...head: number[]): string {
-  const values = Array.from({ length: 768 }, (_, i) => head[i] ?? 0)
-  return `[${values.join(',')}]`
+async function memberIds(collectionId: string): Promise<string[]> {
+  const collection = await getCollectionWithRoms(userId, collectionId)
+  return collection.members.map((member) => member.romId).sort()
 }
 
-async function addEmbedding(romId: string, embedding: string): Promise<void> {
-  await prisma.$executeRaw`
-    INSERT INTO "RomEmbedding" ("romId", "sourceText", "model", "embedding")
-    VALUES (${romId}, 'test', 'test-model', ${embedding}::vector)
-  `
-}
-
-describeDb('collection storage (integration)', () => {
+// Runs the real queries and transactions of the storage against PostgreSQL
+describe.skipIf(!enabled)('collection.storage on PostgreSQL', () => {
   beforeAll(async () => {
     const users = await Promise.all(
       [0, 1].map(() =>
@@ -63,17 +57,16 @@ describeDb('collection storage (integration)', () => {
     otherUserId = users[1]?.id ?? ''
   })
 
-  // Children first: foreign keys forbid deleting a ROM still referenced
+  // Children first: foreign keys forbid deleting a row still referenced
   afterEach(async () => {
-    await prisma.$executeRaw`
-      DELETE FROM "RomEmbedding" WHERE "romId" = ANY(${romIds}::text[])
-    `
-    await prisma.collectionMember.deleteMany({
-      where: { collection: { userId: { in: [userId, otherUserId] } } },
+    const owners = { userId: { in: [userId, otherUserId] } }
+    await prisma.aiProposal.deleteMany({
+      where: {
+        OR: [{ collection: owners }, { reviewedById: userId }],
+      },
     })
-    await prisma.collection.deleteMany({
-      where: { userId: { in: [userId, otherUserId] } },
-    })
+    await prisma.collectionMember.deleteMany({ where: { collection: owners } })
+    await prisma.collection.deleteMany({ where: owners })
     await prisma.rom.deleteMany({ where: { id: { in: romIds } } })
     romIds.length = 0
   })
@@ -93,6 +86,7 @@ describeDb('collection storage (integration)', () => {
       const roms = await listRomsForGrouping(userId)
 
       expect(roms.map((rom) => rom.id)).toEqual([a])
+      expect(roms[0]?.title).toBeNull()
       expect(roms[0]?.gameExternalId).toBeNull()
       expect(roms[0]?.cloneOfId).toBeNull()
     })
@@ -117,66 +111,8 @@ describeDb('collection storage (integration)', () => {
     })
   })
 
-  describe('findNeighbors', () => {
-    it('returns the closest ROMs of the user first, never the ROM itself', async () => {
-      const a = await createRom('a', userId)
-      const b = await createRom('b', userId)
-      const c = await createRom('c', userId)
-      await addEmbedding(a, vector(1))
-      await addEmbedding(b, vector(0.99, 0.1))
-      await addEmbedding(c, vector(0, 1))
-
-      const neighbors = await findNeighbors(userId, a, 5)
-
-      expect(neighbors.map((neighbor) => neighbor.romId)).toEqual([b, c])
-      expect(neighbors[0]?.similarity).toBeGreaterThan(0.99)
-      expect(neighbors[1]?.similarity).toBeLessThan(0.1)
-    })
-
-    it('never returns a ROM owned by someone else', async () => {
-      const a = await createRom('a', userId)
-      const foreign = await createRom('foreign', otherUserId)
-      await addEmbedding(a, vector(1))
-      await addEmbedding(foreign, vector(1, 0.01))
-
-      const neighbors = await findNeighbors(userId, a, 5)
-
-      expect(neighbors.map((neighbor) => neighbor.romId)).not.toContain(foreign)
-    })
-
-    it('returns nothing for a ROM without embedding', async () => {
-      const a = await createRom('a', userId)
-      const b = await createRom('b', userId)
-      await addEmbedding(b, vector(1))
-
-      expect(await findNeighbors(userId, a, 5)).toEqual([])
-    })
-  })
-
-  describe('getMemberSimilarities', () => {
-    it('returns each pair once, most similar first', async () => {
-      const a = await createRom('a', userId)
-      const b = await createRom('b', userId)
-      const c = await createRom('c', userId)
-      await addEmbedding(a, vector(1))
-      await addEmbedding(b, vector(0.99, 0.1))
-      await addEmbedding(c, vector(0, 1))
-
-      const similarities = await getMemberSimilarities([a, b, c])
-
-      expect(similarities).toHaveLength(3)
-      expect([similarities[0]?.romA, similarities[0]?.romB].sort()).toEqual(
-        [a, b].sort(),
-      )
-    })
-
-    it('returns nothing for fewer than two ROMs', async () => {
-      expect(await getMemberSimilarities(['only-one'])).toEqual([])
-    })
-  })
-
-  describe('ROM ownership', () => {
-    it('createCollection refuses a ROM owned by someone else', async () => {
+  describe('createCollection', () => {
+    it('refuses a ROM owned by someone else', async () => {
       const foreign = await createRom('foreign', otherUserId)
 
       await expect(
@@ -189,7 +125,65 @@ describeDb('collection storage (integration)', () => {
       ).rejects.toMatchObject({ statusCode: 404, code: 'ROM_NOT_FOUND' })
     })
 
-    it('addMembers refuses a ROM owned by someone else', async () => {
+    it('answers 404 for a platform that does not exist', async () => {
+      await expect(
+        createCollection({
+          userId,
+          canonicalTitle: 'game',
+          platformId: randomUUID(),
+          source: 'MANUAL',
+        }),
+      ).rejects.toMatchObject({ statusCode: 404, code: 'PLATFORM_NOT_FOUND' })
+    })
+  })
+
+  describe('updateCollection', () => {
+    it('renames, adds and removes members together', async () => {
+      const a = await createRom('a', userId)
+      const b = await createRom('b', userId)
+      const collection = await createCollection({
+        userId,
+        canonicalTitle: 'old',
+        source: 'MANUAL',
+        members: [{ romId: a }],
+      })
+
+      await updateCollection(userId, collection.id, {
+        canonicalTitle: 'new',
+        addRomIds: [b],
+        removeRomIds: [a],
+      })
+
+      const updated = await getCollectionWithRoms(userId, collection.id)
+      expect(updated.canonicalTitle).toBe('new')
+      expect(await memberIds(collection.id)).toEqual([b])
+    })
+
+    it('rolls everything back when a ROM to remove is not a member', async () => {
+      const a = await createRom('a', userId)
+      const b = await createRom('b', userId)
+      const stranger = await createRom('stranger', userId)
+      const collection = await createCollection({
+        userId,
+        canonicalTitle: 'old',
+        source: 'MANUAL',
+        members: [{ romId: a }],
+      })
+
+      await expect(
+        updateCollection(userId, collection.id, {
+          canonicalTitle: 'new',
+          addRomIds: [b],
+          removeRomIds: [stranger],
+        }),
+      ).rejects.toMatchObject({ code: 'COLLECTION_MEMBER_NOT_FOUND' })
+
+      const untouched = await getCollectionWithRoms(userId, collection.id)
+      expect(untouched.canonicalTitle).toBe('old')
+      expect(await memberIds(collection.id)).toEqual([a])
+    })
+
+    it('refuses to add a ROM owned by someone else', async () => {
       const foreign = await createRom('foreign', otherUserId)
       const collection = await createCollection({
         userId,
@@ -198,8 +192,68 @@ describeDb('collection storage (integration)', () => {
       })
 
       await expect(
-        addMembers(userId, collection.id, [{ romId: foreign }]),
+        updateCollection(userId, collection.id, { addRomIds: [foreign] }),
       ).rejects.toMatchObject({ code: 'ROM_NOT_FOUND' })
+    })
+  })
+
+  describe('mergeCollections', () => {
+    it('moves the members into the target and dissolves the source', async () => {
+      const a = await createRom('a', userId)
+      const b = await createRom('b', userId)
+      const target = await createCollection({
+        userId,
+        canonicalTitle: 'target',
+        source: 'MANUAL',
+        members: [{ romId: a }],
+      })
+      const source = await createCollection({
+        userId,
+        canonicalTitle: 'source',
+        source: 'MANUAL',
+        members: [{ romId: a }, { romId: b }],
+      })
+
+      await mergeCollections(userId, target.id, source.id)
+
+      expect(await memberIds(target.id)).toEqual([a, b].sort())
+      await expect(
+        getCollectionWithRoms(userId, source.id),
+      ).rejects.toMatchObject({ code: 'COLLECTION_NOT_FOUND' })
+    })
+  })
+
+  describe('deleteCollection', () => {
+    it('keeps the ROMs and closes the pending AI proposal as rejected', async () => {
+      const a = await createRom('a', userId)
+      const collection = await createCollection({
+        userId,
+        canonicalTitle: 'ai made',
+        source: 'AI',
+        members: [{ romId: a }],
+      })
+      const proposal = await prisma.aiProposal.create({
+        data: {
+          kind: 'GROUPING',
+          collectionId: collection.id,
+          payload: {},
+          model: 'test-model',
+          promptName: 'grouping',
+          promptVersion: 'v1',
+          confidence: 0.9,
+          status: 'PENDING',
+        },
+      })
+
+      await deleteCollection(userId, collection.id)
+
+      const closed = await prisma.aiProposal.findUnique({
+        where: { id: proposal.id },
+      })
+      expect(closed?.status).toBe('REJECTED')
+      expect(closed?.collectionId).toBeNull()
+      expect(closed?.reviewedById).toBe(userId)
+      expect(await prisma.rom.count({ where: { id: a } })).toBe(1)
     })
   })
 })

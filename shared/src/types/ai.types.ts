@@ -4,6 +4,7 @@ import type {
   aiProposalSchema,
   aiProposalStatusFilterSchema,
   aiProposalStatusSchema,
+  collectionGroupingSchema,
   proposalCorrectionsSchema,
   proposalReviewSchema,
   romIdentificationSchema,
@@ -18,3 +19,4 @@ export type AiProposal = z.infer<typeof aiProposalSchema>
 export type ProposalCorrections = z.infer<typeof proposalCorrectionsSchema>
 export type ProposalReview = z.infer<typeof proposalReviewSchema>
 export type AiProposalListQuery = z.infer<typeof aiProposalListQuerySchema>
+export type CollectionGrouping = z.infer<typeof collectionGroupingSchema>

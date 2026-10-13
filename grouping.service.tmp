@@ -1,2 +1,0 @@
-]633;E;echo "// Pure grouping pipeline: no database or LLM access. Everything it needs is";debac26b-2b52-4ec2-99ed-f2b7584ff8b3]633;C// Pure grouping pipeline: no database or LLM access. Everything it needs is
-// passed in, so each stage can be unit-tested with plain objects.

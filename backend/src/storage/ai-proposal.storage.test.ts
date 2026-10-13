@@ -78,6 +78,30 @@ describe('ai-proposal.storage', () => {
     })
   })
 
+  it('listProposals returns every status of one ROM when no status is given', async () => {
+    vi.mocked(prisma.aiProposal.findMany).mockResolvedValue([])
+    vi.mocked(prisma.aiProposal.count).mockResolvedValue(0)
+
+    await listProposals({
+      userId: 'user-1',
+      romId: 'rom-1',
+      page: 1,
+      pageSize: 20,
+    })
+
+    const expectedWhere = {
+      kind: 'IDENTIFICATION',
+      romId: 'rom-1',
+      rom: { userId: 'user-1' },
+    }
+    expect(prisma.aiProposal.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    )
+    expect(prisma.aiProposal.count).toHaveBeenCalledWith({
+      where: expectedWhere,
+    })
+  })
+
   it('getProposal looks a proposal up with its ROM', async () => {
     await getProposal('prop-1')
 

@@ -38,6 +38,7 @@ rootRouter.use(libraryRouter)
 rootRouter.use(scanRouter)
 /**
  * GET /roms
+ * GET /roms/:id
  */
 rootRouter.use(romRouter)
 /**

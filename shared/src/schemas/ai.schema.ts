@@ -51,10 +51,18 @@ export const aiProposalSchema = z.object({
   promptName: z.string(),
   promptVersion: z.string(),
   createdAt: z.iso.datetime(),
+  reviewedAt: z.iso.datetime().nullable(), // Null until a user reviews it
 })
 
+// 'ALL' lifts the status filter, for the proposal history of a ROM
+export const aiProposalStatusFilterSchema = z.enum([
+  ...aiProposalStatusSchema.options,
+  'ALL',
+])
+
 export const aiProposalListQuerySchema = z.object({
-  status: aiProposalStatusSchema.default('PENDING'),
+  status: aiProposalStatusFilterSchema.default('PENDING'),
+  romId: z.uuid().optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 })

@@ -39,12 +39,25 @@ written into the ROM: it waits in a review queue until a user accepts it.
 
 ## Endpoints
 
-| Method | Path                           | Behaviour                                                              |
-| ------ | ------------------------------ | ---------------------------------------------------------------------- |
-| POST   | `/api/ai/roms/:id/identify`    | Identifies one ROM, answers `200` with the proposal                    |
-| POST   | `/api/ai/roms/identify-batch`  | Identifies every `UNIDENTIFIED` ROM in a background job, answers `202` |
-| GET    | `/api/ai/proposals`            | Paginated review queue, `status` defaults to `PENDING`                 |
-| POST   | `/api/ai/proposals/:id/review` | `{ action: 'accept' \| 'reject', corrections? }`                       |
+| Method | Path                           | Behaviour                                                                                                     |
+| ------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/ai/roms/:id/identify`    | Identifies one ROM, answers `200` with the proposal                                                           |
+| POST   | `/api/ai/roms/identify-batch`  | Identifies every `UNIDENTIFIED` ROM in a background job, answers `202`                                        |
+| GET    | `/api/ai/proposals`            | Paginated review queue, `status` defaults to `PENDING`; `romId` plus `status=ALL` give the history of one ROM |
+| POST   | `/api/ai/proposals/:id/review` | `{ action: 'accept' \| 'reject', corrections? }`                                                              |
 
 When Ollama is unreachable, the single-ROM route answers
 `503 OLLAMA_UNAVAILABLE` and the batch stops early.
+
+## Interface
+
+- The header status follows `GET /api/health`, polled every 10 seconds and on
+  window focus. It turns red or green without a page reload.
+- Any action that needs an inference uses `AiButton`: while Ollama is down it is
+  disabled and its tooltip says why. Accepting or rejecting a proposal needs no
+  inference and stays available.
+- `GET /api/roms/:id` feeds the ROM detail page: whole-file and data-only
+  fingerprints, `headerBytesSkipped`, the matched DAT entry, and the proposal
+  history.
+- A proposal exposes `reviewedAt`. A `REJECTED` proposal with a null
+  `reviewedAt` was discarded automatically, never by a user.

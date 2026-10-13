@@ -39,3 +39,40 @@ export const platformSchema = z.object({
   slug: z.string(),
   name: z.string(),
 })
+
+// The catalog entry a ROM was matched against, flattened with its DAT file
+export const romDatEntrySchema = z.object({
+  id: z.string(),
+  gameName: z.string(),
+  romName: z.string(),
+  description: z.string(),
+  sizeBytes: z.number(),
+  crc: z.string().nullable(),
+  md5: z.string().nullable(),
+  sha1: z.string().nullable(),
+  status: z.string().nullable(),
+  datFileName: z.string(),
+  datVersion: z.string().nullable(),
+})
+
+// Validates and parses the full record of a ROM, as its detail page shows it
+// `md5/sha1` cover the whole file: `md5Data`/`sha1Data` skip the first `headerBytesSkipped` bytes and are null when no known header was detected
+export const romDetailSchema = romSummarySchema.extend({
+  relativePath: z.string(),
+  extension: z.string(),
+  md5: z.string(),
+  sha1: z.string(),
+  crc32: z.string().nullable(),
+  md5Data: z.string().nullable(),
+  sha1Data: z.string().nullable(),
+  headerBytesSkipped: z.number().int().nonnegative(),
+  firstSeenAt: z.iso.datetime(),
+  lastScannedAt: z.iso.datetime(),
+  region: z.string().nullable(),
+  languages: z.array(z.string()),
+  releaseYear: z.number().int().nullable(),
+  publisher: z.string().nullable(),
+  genre: z.string().nullable(),
+  summary: z.string().nullable(),
+  datEntry: romDatEntrySchema.nullable(),
+})

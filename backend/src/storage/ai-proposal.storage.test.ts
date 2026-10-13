@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '../lib/prisma.js'
 import {
   applyAcceptedIdentification,
+  createGroupingProposal,
   createProposal,
   findPendingProposalForRom,
   getProposal,
@@ -52,6 +53,28 @@ describe('ai-proposal.storage', () => {
         data: { kind: 'IDENTIFICATION', ...input },
       }),
     )
+  })
+
+  it('createGroupingProposal stores a GROUPING proposal anchored to its collection', async () => {
+    const input = {
+      collectionId: 'collection-1',
+      payload: { decision: 'PROPOSED' },
+      rawResponse: '{}',
+      model: 'gemma4:26b',
+      promptName: 'grouping',
+      promptVersion: 'v1',
+      confidence: 0.9,
+      status: 'PENDING' as const,
+      durationMs: 1200,
+      promptTokens: 300,
+      completionTokens: 80,
+    }
+
+    await createGroupingProposal(input)
+
+    expect(prisma.aiProposal.create).toHaveBeenCalledWith({
+      data: { kind: 'GROUPING', ...input },
+    })
   })
 
   it('listProposals scopes the query to the user and the requested status', async () => {

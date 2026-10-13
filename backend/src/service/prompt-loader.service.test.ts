@@ -89,9 +89,8 @@ describe('prompt-loader', () => {
 
     it('renders the grouping prompt', () => {
       const rendered = renderPrompt('grouping', {
-        romFileName: 'Super Mario Kart',
-        platformName: 'SNES',
-        candidates: '- Super Mario Kart (Europe)',
+        romCount: '1',
+        roms: '- id-1 | Super Mario Kart (Europe).sfc | SNES | super mario kart | Europe',
       })
 
       expect(rendered.user).toContain('Super Mario Kart')

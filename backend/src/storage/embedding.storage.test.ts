@@ -7,6 +7,7 @@ import {
   countEmbeddings,
   findNearest,
   findRomsWithoutEmbedding,
+  getMemberSimilarities,
   upsertEmbedding,
 } from './embedding.storage.js'
 
@@ -76,6 +77,25 @@ describe('embedding.storage', () => {
       expect(sql.values.some((v) => Math.abs(Number(v) - 0.1) < 1e-9)).toBe(
         true,
       )
+    })
+  })
+
+  describe('getMemberSimilarities', () => {
+    it('binds the ids as one array parameter and returns the pairs', async () => {
+      const rows = [{ romA: 'rom-1', romB: 'rom-2', similarity: 0.97 }]
+      vi.mocked(prisma.$queryRaw).mockResolvedValue(rows)
+
+      const result = await getMemberSimilarities(['rom-1', 'rom-2'])
+
+      expect(result).toEqual(rows)
+      const sql = sqlOf(prisma.$queryRaw)
+      expect(sql.values).toContainEqual(['rom-1', 'rom-2'])
+      expect(sql.sql).toContain('<=>')
+    })
+
+    it('does not query for fewer than two ROMs', async () => {
+      expect(await getMemberSimilarities(['rom-1'])).toEqual([])
+      expect(prisma.$queryRaw).not.toHaveBeenCalled()
     })
   })
 

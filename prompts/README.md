@@ -44,6 +44,15 @@ Common variables:
 - `{{candidates}}` — a short, pre-formatted list of nearby catalog entries or
   collections, built by the caller before rendering the prompt.
 
+Variables of `grouping.v1.md`:
+
+- `{{romCount}}` — the number of ROMs in the candidate cluster.
+- `{{roms}}` — one `- id | file name | platform | normalized title | region`
+  line per ROM, built by `buildGroupingVariables`. The grouping prompt has no
+  identifying field to set to `null`: the model admits doubt by lowering
+  `confidence`, by answering that the ROMs are not the same game, or by marking
+  a single ROM as not belonging.
+
 ## Writing rules
 
 - **Do not describe the JSON output format in the prompt.** That's the job of

@@ -61,3 +61,47 @@ When Ollama is unreachable, the single-ROM route answers
   history.
 - A proposal exposes `reviewedAt`. A `REJECTED` proposal with a null
   `reviewedAt` was discarded automatically, never by a user.
+
+## Collections and duplicates
+
+`POST /api/collections/detect` groups the ROMs that are in no collection yet, in
+three stages. Each stage only sees what the previous one left over.
+
+1. **Catalog family** (`DAT_CLONE`, confidence 1). ROMs of one DAT family on a
+   platform: a parent and its clones, or clones of the same parent even when the
+   parent is not in the library. No model involved.
+2. **Base title** (`DAT_CLONE`, confidence 0.95). ROMs sharing a platform and a
+   non-empty normalized title. No model involved.
+3. **Semantic** (`AI`). The remaining ROMs are linked when the cosine similarity
+   of their vectors reaches 0.85, which needs the embeddings backfill. Each
+   cluster is sent to the model with `prompts/grouping.v1.md`, at most 15 ROMs
+   per call. The model confirms the cluster, removes intruders, or refuses it.
+
+The model's answer is never trusted as is:
+
+- an id that was not in the prompt is dropped and reported in `issues`;
+- a ROM the model leaves out, or marks as not belonging, is removed;
+- fewer than two ROMs left, or no title, creates nothing;
+- confidence below `AI_CONFIDENCE_THRESHOLD` creates nothing.
+
+Every answer is stored as an `AiProposal` of kind `GROUPING`, with the raw
+response, the model, the prompt version and the inference metrics. A confident
+one creates the collection and stays `PENDING`, linked to it: keeping the
+collection confirms it, dissolving it closes the proposal as `REJECTED`. The
+others are stored as `REJECTED`, for audit. These proposals are not listed by
+`GET /api/ai/proposals`, which only returns identifications.
+
+Exact copies of a file count once: one copy can join a collection, the others
+are only reported as duplicates. When Ollama is unreachable, stages 1 and 2 are
+saved and stage 3 is skipped.
+
+| Method | Path                          | Behaviour                                                                                      |
+| ------ | ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| POST   | `/api/collections/detect`     | Starts the detection as a background job, answers `202`; `409` while one is running            |
+| GET    | `/api/collections`            | Paginated list with member counts                                                              |
+| GET    | `/api/collections/duplicates` | Exact duplicates (same SHA-1) and header duplicates (same data, different header)              |
+| GET    | `/api/collections/:id`        | Members and their pairwise similarity                                                          |
+| POST   | `/api/collections`            | Manual creation: `{ canonicalTitle, platformId?, romIds? }`                                    |
+| PATCH  | `/api/collections/:id`        | `{ canonicalTitle?, addRomIds?, removeRomIds? }`, applied all or nothing                       |
+| POST   | `/api/collections/:id/merge`  | `{ sourceId }`: moves the members of the source into the collection, then dissolves the source |
+| DELETE | `/api/collections/:id`        | Dissolves the collection, keeps the ROMs                                                       |

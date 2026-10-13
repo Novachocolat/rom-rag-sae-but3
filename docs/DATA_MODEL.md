@@ -127,13 +127,17 @@ erDiagram
   - `UNIDENTIFIED`: no match, no proposal yet.
 - **`AiProposalKind`** (`AiProposal.kind`) with `IDENTIFICATION` (metadata guess
   for one `Rom`) vs `GROUPING` (variants of the same game should form one
-  `Collection`). The kind determines whether `romId` or `collectionId` is set.
+  `Collection`). An identification sets `romId`. A grouping sets `collectionId`
+  when it created a collection, or the `romId` of one ROM of the cluster when
+  the answer is only kept for audit.
 - **`AiProposalStatus`** (`AiProposal.status`) is set to `PENDING` until a user
-  reviews it (`reviewedAt`/`reviewedById` set), then `ACCEPTED` or `REJECTED`.
-  An accepted `GROUPING` proposal is what creates/extends a `Collection`.
+  reviews it (`reviewedAt`/`reviewedById` set), then `ACCEPTED` or `REJECTED`. A
+  confident `GROUPING` proposal creates its `Collection` right away and stays
+  `PENDING`, linked to it; dissolving that collection closes it as `REJECTED`.
 - **`CollectionSource`** (`Collection.source`) means how the collection was
-  formed: `DAT_CLONE` (the DAT file already lists variants via `cloneOfId`),
-  `AI` (from an accepted `GROUPING` proposal, see
+  formed: `DAT_CLONE` (no model involved: the DAT file lists the variants via
+  `cloneOfId`, or the files share a normalized title), `AI` (from a `GROUPING`
+  proposal, see
   [ADR-010](./adr/010-embeddinggemma-vectors-in-pgvector-for-semantic-grouping.md)),
   or `MANUAL` (user-created).
 - **`ScanJobStatus`** (`ScanJob.status`) is the lifecycle of a directory scan:

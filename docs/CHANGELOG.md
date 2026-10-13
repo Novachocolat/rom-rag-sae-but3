@@ -22,6 +22,12 @@ completed, **not at every single commit!**_
 
 ### Added
 
+- Add collection and duplicate detection: catalog families and identical base
+  titles without any model call, then semantic clusters confirmed by the LLM
+  with the versioned `grouping` prompt, each answer kept as a `GROUPING`
+  proposal; exact and header duplicates are reported apart. Exposed by the
+  `/api/collections` routes (detect, list, duplicates, detail, create, update,
+  merge, delete), documented in `docs/AI.md`
 - Add the ROM detail page (`/roms/:id`) with metadata, whole-file and data-only
   fingerprints, a plain-language explanation of `headerBytesSkipped`, the
   matched DAT entry and the AI proposal history, backed by `GET /api/roms/:id`

@@ -53,7 +53,8 @@ async function generateJson<T>(
         stream: false,
         // Same schema both constrains the model's output and validates it below
         format: z.toJSONSchema(opts.schema),
-        think: false, // FIX (@ThFoxY, 2026-10-14): Ollama applies the grammar to the thinking channel, and the model's reasoning ends up inside a string field ("<channel|>thought" in `region`)
+        // FIX (@ThFoxY, 2026-10-14): Ollama applies the grammar to the thinking channel, and the model's reasoning ends up inside a string field ("<channel|>thought" in `region`)
+        think: false,
         options: {
           temperature: env.OLLAMA_TEMPERATURE,
           num_ctx: env.OLLAMA_NUM_CTX,

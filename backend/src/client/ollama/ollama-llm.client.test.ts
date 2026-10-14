@@ -47,13 +47,22 @@ describe('ollamaLlmClient', () => {
           system: 'You are a ROM identifier',
           stream: false,
           format: z.toJSONSchema(titleSchema),
-          think: env.OLLAMA_THINKING,
+          think: false,
           options: {
             temperature: env.OLLAMA_TEMPERATURE,
             num_ctx: env.OLLAMA_NUM_CTX,
           },
         },
       })
+    })
+
+    it('never enables thinking under a JSON format, whatever OLLAMA_THINKING says', async () => {
+      mockedRequest.mockResolvedValue(fakeOllamaResponse())
+
+      await ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema })
+
+      const [, options] = mockedRequest.mock.calls[0]!
+      expect((options.body as { think: boolean }).think).toBe(false)
     })
 
     it('converts nanosecond durations and counts into our metrics (the 1e6/1e9 factor)', async () => {

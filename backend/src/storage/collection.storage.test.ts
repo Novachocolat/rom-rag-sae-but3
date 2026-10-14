@@ -8,6 +8,8 @@ import {
   listRomsForGrouping,
   mergeCollections,
   updateCollection,
+  acceptCollection,
+  listPendingGroupingProposals,
 } from './collection.storage.js'
 
 vi.mock('../lib/prisma.js', () => ({
@@ -24,8 +26,9 @@ vi.mock('../lib/prisma.js', () => ({
       createMany: vi.fn(),
       deleteMany: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
     },
-    aiProposal: { updateMany: vi.fn() },
+    aiProposal: { updateMany: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     rom: { count: vi.fn(), findMany: vi.fn() },
     platform: { count: vi.fn() },
     $transaction: vi.fn(),
@@ -292,6 +295,89 @@ describe('collection.storage', () => {
           where: { userId: 'user-1', collectionMembers: { none: {} } },
         }),
       )
+    })
+  })
+
+  describe('listPendingGroupingProposals', () => {
+    it('lists the pending GROUPING proposals of the user, newest first', async () => {
+      vi.mocked(prisma.aiProposal.findMany).mockResolvedValue([])
+      vi.mocked(prisma.aiProposal.count).mockResolvedValue(0)
+
+      const result = await listPendingGroupingProposals({
+        userId: 'user-1',
+        page: 2,
+        pageSize: 10,
+      })
+
+      expect(result).toEqual({ proposals: [], total: 0 })
+      expect(prisma.aiProposal.findMany).toHaveBeenCalledWith({
+        where: {
+          kind: 'GROUPING',
+          status: 'PENDING',
+          collection: { userId: 'user-1' },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip: 10,
+        take: 10,
+      })
+    })
+  })
+
+  describe('acceptCollection', () => {
+    beforeEach(() => {
+      ownCollection()
+      vi.mocked(prisma.aiProposal.updateMany).mockResolvedValue({ count: 1 })
+      vi.mocked(prisma.collectionMember.deleteMany).mockResolvedValue({
+        count: 1,
+      })
+      vi.mocked(prisma.collectionMember.count).mockResolvedValue(2)
+    })
+
+    it('closes the pending proposal as accepted and drops the excluded members', async () => {
+      await acceptCollection('user-1', 'c1', ['r3'])
+
+      expect(prisma.aiProposal.updateMany).toHaveBeenCalledWith({
+        where: { collectionId: 'c1', kind: 'GROUPING', status: 'PENDING' },
+        data: expect.objectContaining({
+          status: 'ACCEPTED',
+          reviewedById: 'user-1',
+        }),
+      })
+      expect(prisma.collectionMember.deleteMany).toHaveBeenCalledWith({
+        where: { collectionId: 'c1', romId: { in: ['r3'] } },
+      })
+    })
+
+    it('removes nobody when nothing is excluded', async () => {
+      await acceptCollection('user-1', 'c1', [])
+
+      expect(prisma.collectionMember.deleteMany).not.toHaveBeenCalled()
+    })
+
+    it('refuses a collection that has no pending proposal', async () => {
+      vi.mocked(prisma.aiProposal.updateMany).mockResolvedValue({ count: 0 })
+
+      await expect(acceptCollection('user-1', 'c1', [])).rejects.toMatchObject({
+        code: 'NO_PENDING_PROPOSAL',
+      })
+    })
+
+    it('refuses an excluded ROM that is not a member', async () => {
+      vi.mocked(prisma.collectionMember.deleteMany).mockResolvedValue({
+        count: 0,
+      })
+
+      await expect(
+        acceptCollection('user-1', 'c1', ['ghost']),
+      ).rejects.toMatchObject({ code: 'COLLECTION_MEMBER_NOT_FOUND' })
+    })
+
+    it('refuses to leave fewer than two members', async () => {
+      vi.mocked(prisma.collectionMember.count).mockResolvedValue(1)
+
+      await expect(
+        acceptCollection('user-1', 'c1', ['r3']),
+      ).rejects.toMatchObject({ code: 'COLLECTION_TOO_SMALL' })
     })
   })
 })

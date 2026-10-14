@@ -3,7 +3,7 @@ import type { ProposalCorrections, RomIdentification } from '@repo/shared/types'
 import { env } from '../env.js'
 import type { LlmClient } from '../client/ollama/ollama.types.js'
 import { AppError } from '../lib/error.js'
-import { loadPrompt, renderTemplate } from '../lib/prompt-loader.js'
+import { loadPrompts, renderPrompt } from './prompt-loader.service.js'
 import { prisma } from '../lib/prisma.js'
 import { logger } from '../lib/logger.js'
 import {
@@ -40,7 +40,7 @@ import {
 } from '../client/ollama/ollama.error.js'
 import { ollamaLlmClient } from '../client/ollama/ollama-llm.client.js'
 
-export const IDENTIFICATION_PROMPT = { name: 'identification', version: 'v1' }
+export const IDENTIFICATION_PROMPT = { name: 'identification', version: 'v2' }
 
 const CANDIDATE_LIMIT = 5
 const MIN_RELEASE_YEAR = 1970
@@ -63,7 +63,7 @@ export interface RomForIdentification {
   candidates: string[] // closest catalog names, to anchor the model
 }
 
-// Fills the placeholders of prompts/identification.v1.md
+// Fills the placeholders of prompts/identification.v2.md
 export function buildPromptVariables(
   rom: RomForIdentification,
 ): Record<string, string> {
@@ -168,7 +168,10 @@ export function statusFor(decision: IdentificationDecision): ProposalStatus {
 export interface IdentificationPorts {
   llm: LlmClient
   model: string
-  renderPrompt: (variables: Record<string, string>) => string
+  renderPrompt: (variables: Record<string, string>) => {
+    system: string
+    user: string
+  }
   cache: {
     get(key: string): Promise<CachedIdentification | null>
     set(key: string, value: CachedIdentification): Promise<void>
@@ -200,13 +203,13 @@ export async function proposeIdentification(
   rom: RomForIdentification,
   ports: IdentificationPorts,
 ): Promise<IdentificationOutcome> {
-  const renderedPrompt = ports.renderPrompt(buildPromptVariables(rom))
+  const prompt = ports.renderPrompt(buildPromptVariables(rom))
   const cacheKey = buildAiCacheKey({
     kind: 'identification',
     model: ports.model,
     promptName: IDENTIFICATION_PROMPT.name,
     promptVersion: IDENTIFICATION_PROMPT.version,
-    renderedPrompt,
+    renderedPrompt: `${prompt.system}\u0000${prompt.user}`,
   })
 
   let entry: CachedIdentification
@@ -218,7 +221,8 @@ export async function proposeIdentification(
     fromCache = true
   } else {
     const fresh = await ports.llm.generateJson({
-      prompt: renderedPrompt,
+      prompt: prompt.user,
+      system: prompt.system,
       schema: romIdentificationSchema,
     })
     entry = {
@@ -271,16 +275,16 @@ export function mergeCorrections(
 }
 
 // Builds the real ports: Ollama, Redis cache, DAT catalogs and the prompt file
-function buildRealPorts(platforms: PlatformInfo[]): IdentificationPorts {
-  const template = loadPrompt(
-    IDENTIFICATION_PROMPT.name,
-    IDENTIFICATION_PROMPT.version,
-  )
+async function buildRealPorts(
+  platforms: PlatformInfo[],
+): Promise<IdentificationPorts> {
+  await loadPrompts()
 
   return {
     llm: ollamaLlmClient,
     model: env.OLLAMA_LLM_MODEL,
-    renderPrompt: (variables) => renderTemplate(template, variables),
+    renderPrompt: (variables) =>
+      renderPrompt(IDENTIFICATION_PROMPT.name, variables),
     cache: { get: getCachedIdentification, set: setCachedIdentification },
     titleInCatalog: async (title, extension) =>
       (
@@ -361,7 +365,7 @@ export async function identifyStoredRom(romId: string, userId: string) {
       platform,
       candidates: similar.map((entry) => entry.gameName),
     },
-    buildRealPorts(platforms),
+    await buildRealPorts(platforms),
   )
 
   const proposal = await createProposal({

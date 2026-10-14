@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LlmClient } from '../client/ollama/ollama.types.js'
 import { OllamaUnavailableError } from '../client/ollama/ollama.error.js'
 import { AppError } from '../lib/error.js'
-import { loadPrompt, renderTemplate } from '../lib/prompt-loader.js'
+import { loadPrompts, renderPrompt } from './prompt-loader.service.js'
 import { prisma } from '../lib/prisma.js'
 import { redis } from '../lib/redis.js'
 import {
@@ -134,7 +134,10 @@ function buildPorts(overrides: Partial<IdentificationPorts> = {}) {
   const ports: IdentificationPorts = {
     llm,
     model: 'gemma4:26b',
-    renderPrompt: (variables) => `PROMPT for ${variables.fileName}`,
+    renderPrompt: (variables) => ({
+      system: 'SYSTEM',
+      user: `PROMPT for ${variables.fileName}`,
+    }),
     cache: {
       get: vi.fn().mockResolvedValue(null),
       set: vi.fn().mockResolvedValue(undefined),
@@ -175,16 +178,19 @@ describe('buildPromptVariables', () => {
 
 // Keeps the shipped prompt and the variables it is filled with in sync
 describe('identification prompt', () => {
-  it('renders without a missing placeholder for a real ROM', () => {
-    const template = loadPrompt(
+  it('renders without a missing placeholder for a real ROM', async () => {
+    await loadPrompts()
+
+    const rendered = renderPrompt(
       IDENTIFICATION_PROMPT.name,
-      IDENTIFICATION_PROMPT.version,
+      buildPromptVariables(rom),
     )
 
-    const rendered = renderTemplate(template, buildPromptVariables(rom))
-
-    expect(rendered).toContain('Tetris (World).gb')
-    expect(rendered).not.toContain('{{')
+    expect(rendered.user).toContain('Tetris (World).gb')
+    expect(rendered.user).not.toContain('{{')
+    // The front matter and section headings must never reach the model
+    expect(rendered.system).not.toContain('changelog')
+    expect(rendered.user).not.toContain('# User')
   })
 })
 
@@ -317,7 +323,10 @@ describe('proposeIdentification', () => {
     const outcome = await proposeIdentification(rom, ports)
 
     expect(llm.generateJson).toHaveBeenCalledWith(
-      expect.objectContaining({ prompt: 'PROMPT for Tetris (World).gb' }),
+      expect.objectContaining({
+        prompt: 'PROMPT for Tetris (World).gb',
+        system: 'SYSTEM',
+      }),
     )
     expect(ports.cache.set).toHaveBeenCalledWith(
       expect.stringMatching(/^ai:identification:[0-9a-f]{64}$/),

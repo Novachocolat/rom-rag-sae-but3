@@ -2,6 +2,9 @@ import type { CollectionSource } from '../generated/prisma/client.js'
 import { AppError } from '../lib/error.js'
 import { prisma } from '../lib/prisma.js'
 
+// A collection holds at least two ROMs, otherwise there is nothing to group
+const MIN_COLLECTION_SIZE = 2
+
 export interface CollectionMemberInput {
   romId: string
   variantLabel?: string | null
@@ -329,4 +332,87 @@ export async function listRomsForGrouping(
     gameExternalId: datEntry?.gameExternalId ?? null,
     cloneOfId: datEntry?.cloneOfId ?? null,
   }))
+}
+
+/**
+ * Lists the user's AI groupings still waiting for review, newest first.
+ * The owner is the one of the collection the proposal created.
+ * @returns The requested page and the total number of pending groupings
+ */
+export async function listPendingGroupingProposals(
+  input: ListCollectionsInput,
+) {
+  const where = {
+    kind: 'GROUPING' as const,
+    status: 'PENDING' as const,
+    collection: { userId: input.userId },
+  }
+
+  const [proposals, total] = await Promise.all([
+    prisma.aiProposal.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      skip: (input.page - 1) * input.pageSize,
+      take: input.pageSize,
+    }),
+    prisma.aiProposal.count({ where }),
+  ])
+
+  return { proposals, total }
+}
+
+/**
+ * Keeps an AI collection: closes its pending proposal as ACCEPTED and takes the excluded ROMs out, in one transactions.
+ * The excluded ROMs stay in the library.
+ * @throws {AppError} 404 COLLECTION_NOT_FOUND, 409 NO_PENDING_PROPOSAL when nothing waits for review
+ * 404 COLLECTION_MEMBER_NOT_FOUND when an excluded ROM is not a member
+ * 400 COLLECTION_TOO_SMALL when fewer than two members remain
+ */
+export async function acceptCollection(
+  userId: string,
+  id: string,
+  excludeRomIds: string[],
+): Promise<void> {
+  const toRemove = [...new Set(excludeRomIds)]
+  await assertOwned(userId, id)
+
+  await prisma.$transaction(async (tx) => {
+    const { count: pending } = await tx.aiProposal.updateMany({
+      where: { collectionId: id, kind: 'GROUPING', status: 'PENDING' },
+      data: {
+        status: 'ACCEPTED',
+        reviewedAt: new Date(),
+        reviewedById: userId,
+      },
+    })
+    // Throwing rolls the whole acceptance back
+    if (pending === 0) {
+      throw AppError.conflict(
+        'NO_PENDING_PROPOSAL',
+        `Collection ${id} has no grouping waiting for review`,
+      )
+    }
+
+    if (toRemove.length > 0) {
+      const { count } = await tx.collectionMember.deleteMany({
+        where: { collectionId: id, romId: { in: toRemove } },
+      })
+      if (count !== toRemove.length) {
+        throw AppError.notFound(
+          'COLLECTION_MEMBER_NOT_FOUND',
+          `One or more ROMs are not in collection ${id}`,
+        )
+      }
+    }
+
+    const remaining = await tx.collectionMember.count({
+      where: { collectionId: id },
+    })
+    if (remaining < MIN_COLLECTION_SIZE) {
+      throw AppError.badRequest(
+        'COLLECTION_TOO_SMALL',
+        'A collection needs at least two members: reject the grouping instead',
+      )
+    }
+  })
 }

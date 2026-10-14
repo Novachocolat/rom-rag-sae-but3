@@ -1,6 +1,6 @@
 ---
 name: identification
-version: v1
+version: v2
 model: gemma4:26b
 temperature: 0.1
 description: >
@@ -9,6 +9,7 @@ description: >
   evidence.
 changelog:
   - v1: initial version
+  - v2: describe every JSON field and send the system section as system message
 ---
 
 # System
@@ -36,6 +37,21 @@ Decision rules:
 - Keep `reasoning` short (one or two sentences) and concrete: name the specific
   evidence that supports or weakens the proposal, so a human reviewing it can
   judge whether to trust it.
+
+Answer with a single JSON object and nothing else. Each field holds only the
+value described below, never an explanation:
+
+- `title`: the game title without region or revision tags, or `null`.
+- `platform`: the platform slug given in the platform hint, or `null`.
+- `region`: one short region name such as `USA`, `Europe`, `Japan` or `World`,
+  or `null`.
+- `languages`: ISO 639-1 codes in lowercase, e.g. `["en", "fr"]`; `[]` if
+  unknown.
+- `releaseYear`: a four-digit year, or `null`.
+- `publisher`: the publisher name, or `null`.
+- `genre`: one or two words, e.g. `Platformer`, or `null`.
+- `confidence`: a number between 0 and 1.
+- `reasoning`: the only place for your explanation, one or two sentences.
 
 # User
 

@@ -74,5 +74,5 @@ Variables of `grouping.v1.md`:
 
 ## Models
 
-See [identification.v1.md](./identification.v1.md),
+See [identification.v2.md](./identification.v2.md),
 [grouping.v1.md](./grouping.v1.md) and [summary.v1.md](./summary.v1.md).

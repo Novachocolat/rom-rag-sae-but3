@@ -1,10 +1,12 @@
 import type { z } from 'zod'
 import type {
+  collectionAcceptSchema,
   collectionCreateSchema,
   collectionDetailSchema,
   collectionListQuerySchema,
   collectionMemberSchema,
   collectionMergeSchema,
+  collectionProposalSchema,
   collectionSourceSchema,
   collectionSummarySchema,
   collectionUpdateSchema,
@@ -22,3 +24,5 @@ export type CollectionMember = z.infer<typeof collectionMemberSchema>
 export type MemberSimilarity = z.infer<typeof memberSimilaritySchema>
 export type CollectionDetail = z.infer<typeof collectionDetailSchema>
 export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>
+export type CollectionAccept = z.infer<typeof collectionAcceptSchema>
+export type CollectionProposal = z.infer<typeof collectionProposalSchema>

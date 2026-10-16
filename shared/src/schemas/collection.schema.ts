@@ -83,3 +83,25 @@ export const duplicateGroupSchema = z.object({
   label: z.string(),
   roms: z.array(z.object({ id: z.string(), fileName: z.string() })),
 })
+
+// Body of an acceptance: the members the reviewer takes out before keeping the collection
+export const collectionAcceptSchema = z.object({
+  excludeRomIds: z.array(z.uuid()).default([]),
+})
+
+// An AI grouping waiting for review: the collection it created, with the model's answer
+export const collectionProposalSchema = z.object({
+  proposalId: z.string(),
+  confidence: z.number(),
+  reasoning: z.string(),
+  issues: z.array(z.string()),
+  model: z.string(),
+  promptName: z.string(),
+  promptVersion: z.string(),
+  createdAt: z.iso.datetime(),
+  collection: collectionDetailSchema,
+})
+
+export const collectionProposalListSchema = createPaginatedResponseSchema(
+  collectionProposalSchema,
+)

@@ -1,9 +1,11 @@
+import { z } from 'zod'
 import {
   collectionCreateSchema,
   collectionIdParamsSchema,
   collectionListQuerySchema,
   collectionMergeSchema,
   collectionUpdateSchema,
+  collectionAcceptSchema,
 } from '@repo/shared/schemas'
 import type {
   CollectionCreate,
@@ -12,12 +14,17 @@ import type {
   CollectionMerge,
   CollectionSummary,
   CollectionUpdate,
+  CollectionAccept,
+  CollectionProposal,
   DuplicateGroup,
   Paginated,
 } from '@repo/shared/types'
 import { Router } from 'express'
 import { OllamaUnavailableError } from '../client/ollama/ollama.error.js'
-import type { CollectionSource } from '../generated/prisma/client.js'
+import type {
+  CollectionSource,
+  AiProposal,
+} from '../generated/prisma/client.js'
 import { AppError } from '../lib/error.js'
 import { startJob } from '../lib/job-runner.js'
 import { logger } from '../lib/logger.js'
@@ -49,6 +56,8 @@ import {
   listRomsForGrouping,
   mergeCollections,
   updateCollection,
+  acceptCollection,
+  listPendingGroupingProposals,
   type GroupingRomRow,
 } from '../storage/collection.storage.js'
 import { listPlatforms } from '../storage/dat.storage.js'
@@ -77,6 +86,12 @@ const SOURCE_BY_STAGE: Record<CollectionStage, CollectionSource> = {
 // read the same ungrouped ROMs and create every collection twice. In memory,
 // like the job runner itself (see ADR-012).
 const runningDetections = new Set<string>()
+
+// What the grouping prompt stored next to the collection it created
+const groupingPayloadSchema = z.object({
+  reasoning: z.string(),
+  issues: z.array(z.string()),
+})
 
 /**
  * Gives a ROM without platform a placeholder platform of its own, so the
@@ -279,6 +294,27 @@ async function toCollectionDetail(
   }
 }
 
+/** Builds the API shape of a pending grouping: the model's answer and its collection. */
+async function toCollectionProposal(
+  userId: string,
+  proposal: AiProposal,
+  collectionId: string,
+): Promise<CollectionProposal> {
+  const payload = groupingPayloadSchema.parse(proposal.payload)
+
+  return {
+    proposalId: proposal.id,
+    confidence: proposal.confidence,
+    reasoning: payload.reasoning,
+    issues: payload.issues,
+    model: proposal.model,
+    promptName: proposal.promptName,
+    promptVersion: proposal.promptVersion,
+    createdAt: proposal.createdAt.toISOString(),
+    collection: await toCollectionDetail(userId, collectionId),
+  }
+}
+
 /**
  * POST /api/collections/detect: starts the detection as a background job and
  * answers 202 with its id. Answers 409 DETECTION_ALREADY_RUNNING while a
@@ -364,6 +400,47 @@ collectionRouter.get(
           memberCount: collection._count.members,
           createdAt: collection.createdAt.toISOString(),
         })),
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      }
+      res.status(200).json(body)
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+/**
+ * GET /api/collections/proposals: the AI groupings waiting for review, each with
+ * the collection it created. Declared before /collections/:id so that
+ * "proposals" is not read as an id.
+ */
+collectionRouter.get(
+  '/collections/proposals',
+  requireAuth,
+  validate({ query: collectionListQuerySchema }),
+  async (req, res, next) => {
+    try {
+      const userId = res.locals.userId as string
+      const { page, pageSize } = req.query as unknown as CollectionListQuery
+      const { proposals, total } = await listPendingGroupingProposals({
+        userId,
+        page,
+        pageSize,
+      })
+
+      const body: Paginated<CollectionProposal> = {
+        data: await Promise.all(
+          proposals.flatMap((proposal) =>
+            proposal.collectionId
+              ? [toCollectionProposal(userId, proposal, proposal.collectionId)]
+              : [],
+          ),
+        ),
         pagination: {
           page,
           pageSize,
@@ -466,6 +543,32 @@ collectionRouter.post(
       const { sourceId } = req.body as CollectionMerge
 
       await mergeCollections(userId, id, sourceId)
+      res.status(200).json(await toCollectionDetail(userId, id))
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+/**
+ * POST /api/collections/:id/accept: keeps an AI collection, optionally without
+ * the ROMs listed in `excludeRomIds`. Answers the collection as kept. Rejecting
+ * is the DELETE of the collection.
+ */
+collectionRouter.post(
+  '/collections/:id/accept',
+  requireAuth,
+  validate({
+    params: collectionIdParamsSchema,
+    body: collectionAcceptSchema,
+  }),
+  async (req, res, next) => {
+    try {
+      const userId = res.locals.userId as string
+      const { id } = req.params as { id: string }
+      const { excludeRomIds } = req.body as CollectionAccept
+
+      await acceptCollection(userId, id, excludeRomIds)
       res.status(200).json(await toCollectionDetail(userId, id))
     } catch (err) {
       next(err)

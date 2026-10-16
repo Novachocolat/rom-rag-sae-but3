@@ -1,6 +1,13 @@
 import { Link, Outlet, useNavigate } from 'react-router'
 import { useMe } from '@/app/hooks/auth/useMe.ts'
-import { LayoutGrid, LogOut, Settings, ScanLine } from 'lucide-react'
+import {
+  LayoutGrid,
+  LogOut,
+  Settings,
+  ScanLine,
+  Layers,
+  ListChecks,
+} from 'lucide-react'
 import { useLogout } from '@/app/hooks/auth/useLogout'
 import { Button } from '@/app/components/ui/button'
 import { OllamaStatus } from '@/app/components/ai/OllamaStatus'
@@ -14,6 +21,8 @@ import {
 // Declares navigation items
 const NAV_ITEMS = [
   { to: '/', label: 'Library', icon: LayoutGrid },
+  { to: '/collections', label: 'Collections', icon: Layers },
+  { to: '/review', label: 'Review', icon: ListChecks },
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/scan', label: 'Scan', icon: ScanLine },
 ]

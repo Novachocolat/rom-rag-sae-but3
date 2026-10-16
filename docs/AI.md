@@ -8,7 +8,7 @@ written into the ROM: it waits in a review queue until a user accepts it.
 
 1. **Context.** The file name, extension, size, a platform deduced from the ROM
    or its extension, and up to 5 closest catalog names (`findCandidateEntries`).
-2. **Prompt.** `prompts/identification.v1.md` is rendered with that context.
+2. **Prompt.** `prompts/identification.v2.md` is rendered with that context.
    Prompts are versioned files, never strings inside `.ts`.
 3. **Model call.** `generateJson` sends the schema derived from
    `romIdentificationSchema` as the Ollama `format`, so the output is

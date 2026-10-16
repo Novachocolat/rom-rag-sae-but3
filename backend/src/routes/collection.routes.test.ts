@@ -20,6 +20,8 @@ import {
   listRomsForGrouping,
   mergeCollections,
   updateCollection,
+  acceptCollection,
+  listPendingGroupingProposals,
   type GroupingRomRow,
 } from '../storage/collection.storage.js'
 import { listPlatforms } from '../storage/dat.storage.js'
@@ -58,6 +60,8 @@ vi.mock('../storage/collection.storage.js', () => ({
   listRomsForGrouping: vi.fn(),
   mergeCollections: vi.fn(),
   updateCollection: vi.fn(),
+  acceptCollection: vi.fn(),
+  listPendingGroupingProposals: vi.fn(),
 }))
 
 const ID = '6f1c1f63-3a5e-4c6b-9a57-1f0d7a1b2c3d'
@@ -539,6 +543,97 @@ describe('collection.routes', () => {
       const res = await request(buildApp()).delete(`/api/collections/${ID}`)
 
       expect(res.status).toBe(404)
+    })
+  })
+
+  describe('GET /api/collections/proposals', () => {
+    it('lists the pending groupings with their collection and the model answer', async () => {
+      vi.mocked(listPendingGroupingProposals).mockResolvedValue({
+        proposals: [
+          {
+            id: 'proposal-1',
+            collectionId: ID,
+            confidence: 0.9,
+            payload: { reasoning: 'Same game', issues: [] },
+            model: 'test-model',
+            promptName: 'grouping',
+            promptVersion: 'v1',
+            createdAt: new Date('2026-10-01T10:00:00Z'),
+          },
+        ],
+        total: 1,
+      } as never)
+      vi.mocked(getCollectionWithRoms).mockResolvedValue(makeDetail() as never)
+      vi.mocked(getMemberSimilarities).mockResolvedValue([])
+
+      const res = await request(buildApp()).get('/api/collections/proposals')
+
+      expect(res.status).toBe(200)
+      expect(res.body.data[0]).toMatchObject({
+        proposalId: 'proposal-1',
+        reasoning: 'Same game',
+        issues: [],
+      })
+      expect(res.body.data[0].collection.id).toBe(ID)
+      expect(res.body.pagination).toEqual({
+        page: 1,
+        pageSize: 20,
+        total: 1,
+        totalPages: 1,
+      })
+      expect(listPendingGroupingProposals).toHaveBeenCalledWith({
+        userId: 'user-1',
+        page: 1,
+        pageSize: 20,
+      })
+    })
+  })
+
+  describe('POST /api/collections/:id/accept', () => {
+    beforeEach(() => {
+      vi.mocked(getCollectionWithRoms).mockResolvedValue(makeDetail() as never)
+      vi.mocked(getMemberSimilarities).mockResolvedValue([])
+    })
+
+    it('keeps the collection without the excluded members', async () => {
+      const res = await request(buildApp())
+        .post(`/api/collections/${ID}/accept`)
+        .send({ excludeRomIds: [OTHER_ID] })
+
+      expect(res.status).toBe(200)
+      expect(res.body.id).toBe(ID)
+      expect(acceptCollection).toHaveBeenCalledWith('user-1', ID, [OTHER_ID])
+    })
+
+    it('excludes nobody by default', async () => {
+      const res = await request(buildApp())
+        .post(`/api/collections/${ID}/accept`)
+        .send({})
+
+      expect(res.status).toBe(200)
+      expect(acceptCollection).toHaveBeenCalledWith('user-1', ID, [])
+    })
+
+    it('answers 409 when no grouping is waiting for review', async () => {
+      vi.mocked(acceptCollection).mockRejectedValue(
+        AppError.conflict('NO_PENDING_PROPOSAL', 'nothing to review'),
+      )
+
+      const res = await request(buildApp())
+        .post(`/api/collections/${ID}/accept`)
+        .send({})
+
+      expect(res.status).toBe(409)
+      expect(res.body.error.code).toBe('NO_PENDING_PROPOSAL')
+    })
+
+    it('answers 400 for an excluded id that is not a UUID', async () => {
+      const res = await request(buildApp())
+        .post(`/api/collections/${ID}/accept`)
+        .send({ excludeRomIds: ['nope'] })
+
+      expect(res.status).toBe(400)
+      expect(acceptCollection).not.toHaveBeenCalled()
     })
   })
 })

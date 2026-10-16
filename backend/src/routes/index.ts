@@ -52,10 +52,12 @@ rootRouter.use(aiRouter)
  * POST /collections/detect
  * GET /collections
  * GET /collections/duplicates
+ * GET /collections/proposals
  * GET /collections/:id
  * POST /collections
  * PATCH /collections/:id
  * POST /collections/:id/merge
+ * POST /collections/:id/accept
  * DELETE /collections/:id
  */
 rootRouter.use(collectionRouter)

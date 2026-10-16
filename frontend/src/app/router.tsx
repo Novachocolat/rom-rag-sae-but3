@@ -7,6 +7,8 @@ import { SettingsPage } from '@/app/components/pages/SettingsPage.tsx'
 import { LibraryPage } from '@/app/components/pages/library/LibraryPage.tsx'
 import { ScanPage } from '@/app/components/pages/scan/ScanPage.tsx'
 import { RomDetailPage } from '@/app/components/pages/rom/RomDetailPage.tsx'
+import { CollectionsPage } from '@/app/components/pages/collections/CollectionsPage.tsx'
+import { ReviewPage } from '@/app/components/pages/review/ReviewPage.tsx'
 
 // Centralizes routing
 export const router = createBrowserRouter([
@@ -22,6 +24,8 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: '/', element: <LibraryPage /> },
+          { path: '/collections', element: <CollectionsPage /> },
+          { path: '/review', element: <ReviewPage /> },
           { path: '/roms/:id', element: <RomDetailPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/scan', element: <ScanPage /> },

@@ -15,11 +15,14 @@ describe('prompt-loader', () => {
       const prompt = getPrompt('identification')
 
       expect(prompt.name).toBe('identification')
-      expect(prompt.version).toBe('v1')
+      expect(prompt.version).toBe('v2')
       expect(prompt.model).toBeTruthy()
       expect(prompt.temperature).toBe(0.1)
       expect(prompt.description).toBeTruthy()
-      expect(prompt.changelog).toEqual(['v1: initial version'])
+      expect(prompt.changelog).toEqual([
+        'v1: initial version',
+        'v2: describe every JSON field and send the system section as system message',
+      ])
     })
 
     it('loads the grouping and summary prompts too', () => {
@@ -89,9 +92,8 @@ describe('prompt-loader', () => {
 
     it('renders the grouping prompt', () => {
       const rendered = renderPrompt('grouping', {
-        romFileName: 'Super Mario Kart',
-        platformName: 'SNES',
-        candidates: '- Super Mario Kart (Europe)',
+        romCount: '1',
+        roms: '- id-1 | Super Mario Kart (Europe).sfc | SNES | super mario kart | Europe',
       })
 
       expect(rendered.user).toContain('Super Mario Kart')

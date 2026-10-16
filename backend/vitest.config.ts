@@ -9,9 +9,11 @@ export default defineConfig({
       PORT: '3000',
       CORS_ORIGIN: 'http://localhost:5173',
       DATABASE_URL:
+        process.env.TEST_DATABASE_URL ??
         'postgresql://postgres:postgres@localhost:5433/app?schema=public',
       REDIS_URL: 'redis://localhost:6379',
-      OLLAMA_BASE_URL: 'http://localhost:11434',
+      OLLAMA_BASE_URL:
+        process.env.TEST_OLLAMA_BASE_URL ?? 'http://localhost:11434',
       OLLAMA_LLM_MODEL: 'gemma4:26b',
       OLLAMA_EMBEDDING_MODEL: 'embeddinggemma',
       OLLAMA_EMBEDDING_DIM: '768',

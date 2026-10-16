@@ -20,6 +20,10 @@ import {
   identifyUnidentifiedRoms,
   reviewProposal,
 } from '../service/ai-identification.service.js'
+import {
+  backfillEmbeddings,
+  getEmbeddingStatus,
+} from '../service/embedding.service.js'
 import { listProposals } from '../storage/ai-proposal.storage.js'
 
 export const aiRouter = Router()
@@ -150,3 +154,26 @@ aiRouter.post(
     }
   },
 )
+
+// POST /api/ai/embeddings/backfill: vectorizes every ROM without a vector, as a background job
+aiRouter.post('/ai/embeddings/backfill', requireAuth, (_req, res, next) => {
+  try {
+    const userId = res.locals.userId as string
+    const jobId = randomUUID()
+    startJob((signal) => backfillEmbeddings(userId, signal), jobId)
+
+    res.status(202).json({ jobId })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/ai/embeddings/status: how many ROMs have a vector, which is the backfill progress
+aiRouter.get('/ai/embeddings/status', requireAuth, async (_req, res, next) => {
+  try {
+    const userId = res.locals.userId as string
+    res.status(200).json(await getEmbeddingStatus(userId))
+  } catch (err) {
+    next(err)
+  }
+})

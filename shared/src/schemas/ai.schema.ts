@@ -66,3 +66,19 @@ export const aiProposalListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 })
+
+// `belongs` lets the model remove a ROM from the cluster; without it the
+// model could only confirm what clustering already decided
+export const collectionGroupingSchema = z.object({
+  sameGame: z.boolean(),
+  canonicalTitle: z.string(),
+  members: z.array(
+    z.object({
+      romId: z.string(),
+      variantLabel: z.string().nullable(),
+      belongs: z.boolean(),
+    }),
+  ),
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string(),
+})

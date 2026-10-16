@@ -6,6 +6,7 @@ import { libraryRouter } from './library.routes.js'
 import { datRouter } from './dat.routes.js'
 import { romRouter } from './rom.routes.js'
 import { aiRouter } from './ai.routes.js'
+import { collectionRouter } from './collection.routes.js'
 
 // Barrel file to exports all routes
 export const rootRouter = Router()
@@ -47,3 +48,16 @@ rootRouter.use(romRouter)
  * POST /ai/proposals/:id/review
  */
 rootRouter.use(aiRouter)
+/**
+ * POST /collections/detect
+ * GET /collections
+ * GET /collections/duplicates
+ * GET /collections/proposals
+ * GET /collections/:id
+ * POST /collections
+ * PATCH /collections/:id
+ * POST /collections/:id/merge
+ * POST /collections/:id/accept
+ * DELETE /collections/:id
+ */
+rootRouter.use(collectionRouter)

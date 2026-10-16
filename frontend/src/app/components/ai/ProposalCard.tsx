@@ -72,7 +72,13 @@ function describeState(proposal: AiProposal): ProposalState {
 // Component to show one AI proposal:
 // - what the model proposed, why, with which model and prompt
 // and the review actions while it is pending
-export function ProposalCard({ proposal }: { proposal: AiProposal }) {
+export function ProposalCard({
+  proposal,
+  showActions = true,
+}: {
+  proposal: AiProposal
+  showActions?: boolean
+}) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const review = useReviewProposal()
 
@@ -172,7 +178,7 @@ export function ProposalCard({ proposal }: { proposal: AiProposal }) {
       </CardContent>
 
       {/* Reviewing only writes to the database */}
-      {proposal.status === 'PENDING' && (
+      {proposal.status === 'PENDING' && showActions && (
         <CardFooter className="justify-end gap-2">
           <Button
             variant="outline"

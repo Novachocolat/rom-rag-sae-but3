@@ -185,6 +185,7 @@ export async function proposeGrouping(
     issues: unknownIds.map((id) => `The model invented the ROM id "${id}"`),
     raw: fresh.raw,
     model: fresh.model,
+    // Inference metrics in each proposal
     durationMs: fresh.durationMs,
     tokensPerSecond: fresh.tokensPerSecond,
     promptTokens: fresh.promptTokens,

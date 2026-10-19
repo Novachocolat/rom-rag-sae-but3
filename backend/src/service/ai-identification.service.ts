@@ -261,6 +261,7 @@ export async function proposeIdentification(
     issues,
     raw: entry.raw,
     model: entry.model,
+    // Inference metrics in each proposal
     durationMs: entry.durationMs,
     tokensPerSecond: entry.tokensPerSecond,
     promptTokens: entry.promptTokens,

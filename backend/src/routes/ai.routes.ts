@@ -68,6 +68,7 @@ function toAiProposal(row: ProposalRow): AiProposal {
     model: row.model,
     promptName: row.promptName,
     promptVersion: row.promptVersion,
+    // Inference metrics in each proposal
     inference: {
       durationMs: row.durationMs,
       tokensPerSecond: payload.tokensPerSecond ?? null,

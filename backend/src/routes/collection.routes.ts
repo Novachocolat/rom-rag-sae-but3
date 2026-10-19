@@ -141,7 +141,8 @@ async function recordOutcome(
     promptName: GROUPING_PROMPT.name,
     promptVersion: GROUPING_PROMPT.version,
     confidence: outcome.confidence,
-    durationMs: Math.round(outcome.durationMs), // FIX (@ThFoxY, 2026-10-16): PostgreSQL's column is an Int:
+    // FIX (@ThFoxY, 2026-10-16): PostgreSQL's column is an Int:
+    durationMs: Math.round(outcome.durationMs),
     promptTokens: outcome.promptTokens,
     completionTokens: outcome.completionTokens,
   }

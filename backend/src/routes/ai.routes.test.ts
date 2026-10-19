@@ -56,6 +56,11 @@ const proposalRow = {
   model: 'gemma4:26b',
   promptName: 'identification',
   promptVersion: 'v1',
+  inference: {
+    durationMs: 1,
+    tokensPerSecond: 1,
+    fromCache: true,
+  },
   createdAt: new Date('2026-10-06T10:00:00.000Z'),
   rom: { id: 'rom-1', userId: 'user-1', fileName: 'Tetris (World).gb' },
 }

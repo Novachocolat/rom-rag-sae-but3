@@ -9,6 +9,8 @@ import type {
   LlmJsonResult,
   LlmTextResult,
 } from './ollama.types.js'
+import { AppError } from '../../lib/error.js'
+import { recordError, recordInference } from '../../storage/metrics.storage.js'
 
 // Shape of Ollama's POST /api/generate response.
 // `thinking` only appears when `think: true` was requested, and is never the
@@ -39,7 +41,7 @@ function extractMetrics(res: OllamaGenerateResponse) {
   }
 }
 
-async function generateJson<T>(
+async function runGenerateJson<T>(
   opts: GenerateJsonOptions<T>,
 ): Promise<LlmJsonResult<T>> {
   const response = await ollamaRequest<OllamaGenerateResponse>(
@@ -86,7 +88,9 @@ async function generateJson<T>(
   return { data: result.data, raw, ...extractMetrics(response) }
 }
 
-async function generateText(opts: GenerateTextOptions): Promise<LlmTextResult> {
+async function runGenerateText(
+  opts: GenerateTextOptions,
+): Promise<LlmTextResult> {
   const response = await ollamaRequest<OllamaGenerateResponse>(
     '/api/generate',
     {
@@ -107,5 +111,25 @@ async function generateText(opts: GenerateTextOptions): Promise<LlmTextResult> {
 
   return { text: response.response, ...extractMetrics(response) }
 }
+
+// Records the outcome of one inference without ever altering it
+async function measured<
+  R extends { model: string; durationMs: number; tokensPerSecond: number },
+>(run: () => Promise<R>): Promise<R> {
+  try {
+    const result = await run()
+    void recordInference(result) // Best effort, never rejects
+    return result
+  } catch (err) {
+    void recordError(err instanceof AppError ? err.code : 'UNKNOWN_ERROR')
+    throw err
+  }
+}
+
+// Gets metrics from generated outputs
+const generateJson: LlmClient['generateJson'] = (opts) =>
+  measured(() => runGenerateJson(opts))
+const generateText: LlmClient['generateText'] = (opts) =>
+  measured(() => runGenerateText(opts))
 
 export const ollamaLlmClient: LlmClient = { generateJson, generateText }

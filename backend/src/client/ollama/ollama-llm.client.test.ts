@@ -4,8 +4,14 @@ import { env } from '../../env.js'
 import { ollamaRequest } from './ollama-http.js'
 import { ollamaLlmClient } from './ollama-llm.client.js'
 import { OllamaInvalidJsonError } from './ollama.error.js'
+import { AppError } from '../../lib/error.js'
+import { recordError, recordInference } from '../../storage/metrics.storage.js'
 
 vi.mock('./ollama-http.js', () => ({ ollamaRequest: vi.fn() }))
+vi.mock('../../storage/metrics.storage.js', () => ({
+  recordInference: vi.fn(),
+  recordError: vi.fn(),
+}))
 
 const mockedRequest = vi.mocked(ollamaRequest)
 
@@ -138,6 +144,32 @@ describe('ollamaLlmClient', () => {
       })
 
       expect(result.tokensPerSecond).toBe(0)
+    })
+
+    it('records the inference metrics of a successful call', async () => {
+      mockedRequest.mockResolvedValue(fakeOllamaResponse())
+
+      await ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema })
+
+      expect(recordInference).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: env.OLLAMA_LLM_MODEL,
+          durationMs: 2000,
+          tokensPerSecond: 20,
+        }),
+      )
+    })
+
+    it('records the error code of a failed call and rethrows it', async () => {
+      mockedRequest.mockRejectedValue(
+        new AppError(504, 'OLLAMA_TIMEOUT', 'too slow'),
+      )
+
+      await expect(
+        ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
+      ).rejects.toThrow('too slow')
+      expect(recordError).toHaveBeenCalledWith('OLLAMA_TIMEOUT')
+      expect(recordInference).not.toHaveBeenCalled()
     })
   })
 

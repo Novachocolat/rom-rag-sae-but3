@@ -91,6 +91,8 @@ const runningDetections = new Set<string>()
 const groupingPayloadSchema = z.object({
   reasoning: z.string(),
   issues: z.array(z.string()),
+  tokensPerSecond: z.number().optional(),
+  fromCache: z.boolean().optional(),
 })
 
 /**
@@ -131,13 +133,15 @@ async function recordOutcome(
       removedRomIds: outcome.removedRomIds,
       reasoning: outcome.reasoning,
       issues: outcome.issues,
+      tokensPerSecond: outcome.tokensPerSecond,
+      fromCache: false, // Never cache grouping answers
     },
     rawResponse: outcome.raw,
     model: outcome.model,
     promptName: GROUPING_PROMPT.name,
     promptVersion: GROUPING_PROMPT.version,
     confidence: outcome.confidence,
-    durationMs: outcome.durationMs,
+    durationMs: Math.round(outcome.durationMs), // FIX (@ThFoxY, 2026-10-16): PostgreSQL's column is an Int:
     promptTokens: outcome.promptTokens,
     completionTokens: outcome.completionTokens,
   }
@@ -310,6 +314,11 @@ async function toCollectionProposal(
     model: proposal.model,
     promptName: proposal.promptName,
     promptVersion: proposal.promptVersion,
+    inference: {
+      durationMs: proposal.durationMs,
+      tokensPerSecond: payload.tokensPerSecond ?? null,
+      fromCache: payload.fromCache ?? null,
+    },
     createdAt: proposal.createdAt.toISOString(),
     collection: await toCollectionDetail(userId, collectionId),
   }

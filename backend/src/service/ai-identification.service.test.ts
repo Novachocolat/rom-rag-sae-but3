@@ -74,6 +74,9 @@ vi.mock('../storage/rom.storage.js', () => ({
   findRomById: vi.fn(),
   listUnidentifiedRomIds: vi.fn(),
 }))
+vi.mock('../storage/metrics.storage.js', () => ({
+  recordCacheLookup: vi.fn(),
+}))
 
 const YEAR = 2026
 

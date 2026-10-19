@@ -52,6 +52,7 @@ export interface GroupingOutcome {
   raw: string
   model: string
   durationMs: number
+  tokensPerSecond: number
   promptTokens: number
   completionTokens: number
 }
@@ -185,6 +186,7 @@ export async function proposeGrouping(
     raw: fresh.raw,
     model: fresh.model,
     durationMs: fresh.durationMs,
+    tokensPerSecond: fresh.tokensPerSecond,
     promptTokens: fresh.promptTokens,
     completionTokens: fresh.completionTokens,
   }

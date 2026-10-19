@@ -40,6 +40,7 @@ interface ProposalRow {
   model: string
   promptName: string
   promptVersion: string
+  durationMs: number | null
   createdAt: Date
   reviewedAt: Date | null
   rom: { fileName: string } | null
@@ -48,7 +49,12 @@ interface ProposalRow {
 // Converts a stored proposal to the API shape. The payload is ours, but it is
 // parsed anyway so a malformed row cannot leak an untyped object to the client.
 function toAiProposal(row: ProposalRow): AiProposal {
-  const payload = row.payload as { identification: unknown; issues: string[] }
+  const payload = row.payload as {
+    identification: unknown
+    issues: string[]
+    tokensPerSecond?: number
+    fromCache?: boolean
+  }
 
   return {
     id: row.id,
@@ -62,6 +68,11 @@ function toAiProposal(row: ProposalRow): AiProposal {
     model: row.model,
     promptName: row.promptName,
     promptVersion: row.promptVersion,
+    inference: {
+      durationMs: row.durationMs,
+      tokensPerSecond: payload.tokensPerSecond ?? null,
+      fromCache: payload.fromCache ?? null,
+    },
     createdAt: row.createdAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
   }

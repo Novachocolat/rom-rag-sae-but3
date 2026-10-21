@@ -183,6 +183,9 @@ scanner's data-only hashes (`DAT_SHA1_DATA`). The _Headered_ variant hashes each
 ROM with the canonical NES 2.0 header, which real dumps rarely carry: with it,
 most NES ROMs stay `UNIDENTIFIED`.
 
+Once the file is in `dataset/dat/`, run `scripts/import-dat.sh` (or `.ps1`) to
+import it; already imported catalogs are skipped.
+
 ## Secrets
 
 - **No `.env` file is ever committed.** `.gitignore` already excludes `.env` and

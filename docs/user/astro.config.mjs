@@ -21,6 +21,10 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'ROM RAG — Manuel utilisateur',
+      defaultLocale: 'root',
+      locales: {
+        root: { label: 'Français', lang: 'fr' },
+      },
       social: [
         {
           icon: 'github',
@@ -34,6 +38,10 @@ export default defineConfig({
           items: [
             { label: 'Découvrir ROM RAG', slug: 'guides/decouvrir-rom-rag' },
             { label: 'Premiers pas', slug: 'guides/premiers-pas' },
+            {
+              label: 'Importer les catalogues',
+              slug: 'guides/importer-les-catalogues',
+            },
             {
               label: "Utiliser l'application",
               slug: 'guides/utiliser-l-application',

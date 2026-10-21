@@ -1,0 +1,139 @@
+---
+title: Premiers pas
+description: Comment installer et lancer ROM RAG, étape par étape.
+---
+
+import { Aside, LinkCard, Steps } from '@astrojs/starlight/components'
+
+Voici comment installer l'application et la lancer pour la première fois. Pas
+besoin de connaissances techniques : suivez les étapes une par une, chaque mot
+technique est expliqué au fur et à mesure.
+
+## Pré-requis
+
+Trois logiciels gratuits sont nécessaires. Ils s'installent **une seule fois**,
+comme n'importe quel autre logiciel :
+
+- **[Docker Desktop](https://docs.docker.com/get-docker/)** : il fait tourner
+  **ROM RAG** à votre place, comme une **boîte** qui contient déjà tout ce dont
+  l'application a besoin pour démarrer. Choisissez votre système d'exploitation
+  sur la page de téléchargement.
+- **[Node.js](https://nodejs.org/)** (version 22 ou plus récente) : il fournit
+  la commande `npm`, qui sert à lancer et arrêter l'application.
+- **[Git](https://git-scm.com/)** : il sert uniquement à **télécharger le
+  projet** sur votre machine.
+
+<Aside type="caution" title="Ouvrez Docker Desktop avant de commencer">
+  Docker Desktop doit être **lancé** (son icône apparaît près de l'horloge) à
+  chaque fois que vous voulez utiliser ROM RAG, pas seulement installé.
+</Aside>
+
+## Installer et lancer ROM RAG
+
+<Steps>
+
+1. **Récupérer le projet sur votre machine**
+
+   {/* TODO: Proposer une alternative sans Git */}
+
+   Choisissez un dossier où télécharger le projet, puis ouvrez un **terminal**
+   dans ce dossier. Copiez-collez les lignes ci-dessous une par une, en appuyant
+   sur « Entrée » après chacune :
+
+   ```bash
+   git clone https://github.com/Novachocolat/rom-rag-sae-but3.git
+   cd rom-rag-sae-but3
+   ```
+
+   La première ligne télécharge le projet depuis la plateforme en ligne
+   **GitHub**. La seconde vous place à l'intérieur du projet, pour que les
+   instructions suivantes s'appliquent au bon endroit.
+
+2. **Créer le fichier de réglages**
+
+   Lancez la commande correspondant à votre système :
+
+   ```powershell title="Windows"
+   Copy-Item .env.example .env
+   ```
+
+   ```bash title="macOS / Linux"
+   cp .env.example .env
+   ```
+
+   Cette ligne crée une copie du fichier qui contient la configuration du
+   projet. Pour un premier essai, vous n'avez **rien à modifier** dedans : les
+   réglages fournis par défaut suffisent.
+
+3. **Lancer l'application**
+
+   ```bash
+   npm run docker:dev
+   ```
+
+   Cette ligne démarre l'application dans son ensemble. La toute première fois,
+   cela peut prendre plusieurs minutes, le temps de télécharger tout ce dont le
+   projet a besoin. Les fois suivantes seront beaucoup plus rapides.
+
+   <Aside type="caution">
+     Laissez cette fenêtre de terminal ouverte : c'est là que tourne
+     l'application. La fermer revient à éteindre ROM RAG.
+   </Aside>
+
+4. **Importer les catalogues de jeux**
+
+   Sans catalogue, l'application ne peut reconnaître aucun jeu. Ouvrez un
+   **second terminal** dans le dossier du projet, puis lancez la commande
+   correspondant à votre système :
+
+   ```powershell title="Windows"
+   powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1
+   ```
+
+   ```bash title="macOS / Linux"
+   ./scripts/import-dat.sh
+   ```
+
+   Si le script indique que l'application ne répond pas, c'est qu'elle n'a pas
+   fini de démarrer : patientez une minute, puis relancez-le. Tous les détails
+   se trouvent sur la page
+   [Importer les catalogues](../importer-les-catalogues/).
+
+5. **Ouvrir l'application dans votre navigateur**
+
+   Ouvrez votre navigateur habituel (Chrome, Firefox, Edge…) et tapez cette
+   adresse dans la barre d'adresse :
+
+   ```text
+   http://localhost:5173
+   ```
+
+   Après quelques secondes lors du premier démarrage, vous arrivez sur la page
+   d'accueil de **ROM RAG**.
+
+</Steps>
+
+## Arrêter l'application proprement
+
+Quand vous avez terminé, retournez dans le terminal et tapez :
+
+```bash
+npm run docker:dev:down
+```
+
+Cela éteint proprement l'application.
+
+<Aside type="tip" title="Rien n'est perdu">
+  Vos données et les catalogues importés sont conservés. La prochaine fois, il
+  vous suffit de refaire l'étape 3 (`npm run docker:dev`) dans le même dossier,
+  puis de rouvrir votre navigateur à l'étape 5. Inutile de réimporter les
+  catalogues.
+</Aside>
+
+## Et ensuite ?
+
+<LinkCard
+  title="Utiliser l'application"
+  description="Choisissez un dossier de ROMs, lancez une analyse et validez les propositions de l'IA."
+  href="../utiliser-l-application/"
+/>

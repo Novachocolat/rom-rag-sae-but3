@@ -1,0 +1,123 @@
+---
+title: Importer les catalogues
+description:
+  Chargez les catalogues No-Intro pour que ROM RAG puisse reconnaître vos jeux.
+---
+
+import { Aside, FileTree, LinkCard, Steps } from '@astrojs/starlight/components'
+
+Pour reconnaître un jeu, **ROM RAG** compare chaque fichier à des **catalogues
+de référence** : des listes publiées par le projet
+[No-Intro](https://datomatic.no-intro.org/), qui recensent tous les jeux connus
+d'une console. Ces catalogues sont des fichiers `.dat`.
+
+Au premier lancement, l'application ne connaît **aucun catalogue** : tant qu'ils
+ne sont pas importés, tous vos jeux restent « non identifiés ». Un script fourni
+avec le projet s'occupe de tout, en une seule commande.
+
+## Avant de commencer
+
+- Docker Desktop est **ouvert** sur votre ordinateur.
+- L'application est **lancée** avec `npm run docker:dev` (voir
+  [Premiers pas](../premiers-pas/)).
+- Les catalogues se trouvent dans le dossier `dataset/dat` du projet. Ceux des
+  consoles prises en charge sont déjà fournis :
+
+<FileTree>
+
+- rom-rag-sae-but3
+  - dataset
+    - dat
+      - Nintendo - Game Boy (20260915-022607).dat
+      - Nintendo - Game Boy Advance (20260919-072854).dat
+      - …
+  - scripts
+    - import-dat.ps1 script pour Windows
+    - import-dat.sh script pour macOS et Linux
+
+</FileTree>
+
+## Lancer l'import
+
+<Steps>
+
+1. Le terminal où tourne `npm run docker:dev` est occupé par l'application :
+   ouvrez un **second terminal**, dans le dossier du projet.
+
+2. Copiez-collez la commande correspondant à votre système, puis validez avec la
+   touche Entrée :
+
+   ```powershell title="Windows"
+   powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1
+   ```
+
+   ```bash title="macOS / Linux"
+   ./scripts/import-dat.sh
+   ```
+
+   Sous Windows, vous pouvez aussi faire un **clic droit** sur le fichier
+   `scripts\import-dat.ps1` dans l'Explorateur, puis choisir **Exécuter avec
+   PowerShell**. La fenêtre reste ouverte à la fin pour vous laisser lire le
+   résultat.
+
+3. Le script affiche une ligne par catalogue, puis un résumé :
+
+   ```text
+   Importing .dat catalogs from .../dataset/dat
+
+     importing Nintendo - Game Boy (20260915-022607).dat... done (1680 entries)
+     skipped   Nintendo - Game Boy Advance (20260919-072854).dat (already imported)
+
+   1 imported, 1 skipped, 0 failed.
+   ```
+
+   - `done` : le catalogue vient d'être importé, avec le nombre de jeux qu'il
+     contient.
+   - `skipped` : le catalogue était déjà importé, il est ignoré.
+   - `failed` : le fichier n'a pas pu être importé (voir
+     [En cas de problème](#en-cas-de-problème)).
+
+</Steps>
+
+<Aside type="tip" title="Vous pouvez le relancer sans crainte">
+  Un catalogue n'est jamais importé deux fois : ceux qui le sont déjà (même nom
+  ou même contenu) sont simplement ignorés. Relancez le script à chaque fois que
+  vous ajoutez un nouveau fichier `.dat` dans `dataset/dat`.
+</Aside>
+
+## Ce que vérifie le script
+
+Avant d'importer quoi que ce soit, le script s'assure que :
+
+1. **Docker** est installé et en cours d'exécution ;
+2. l'**application** est démarrée ;
+3. elle **répond** correctement, avec sa base de données disponible.
+
+Si l'une de ces conditions n'est pas remplie, il s'arrête **sans rien modifier**
+et affiche un message expliquant quoi faire.
+
+## En cas de problème
+
+| Message affiché                         | Que faire ?                                                                   |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| `Docker is not installed`               | Installez [Docker Desktop](https://docs.docker.com/get-docker/).              |
+| `Docker is not running`                 | Ouvrez Docker Desktop, puis lancez `npm run docker:dev`.                      |
+| `The backend container is not running`  | L'application n'est pas lancée : `npm run docker:dev`.                        |
+| `The backend does not answer`           | L'application démarre encore : patientez une minute, puis relancez le script. |
+| `PostgreSQL or Redis is down`           | Consultez les journaux avec `npm run docker:dev:logs`.                        |
+| `failed (HTTP 400: ...)`                | Le fichier n'est pas un catalogue No-Intro valide : remplacez-le.             |
+| `running scripts is disabled` (Windows) | Utilisez exactement la commande `powershell -ExecutionPolicy Bypass ...`.     |
+
+<Aside type="note" title="Pour les utilisateurs avancés">
+  Le script contacte l'application sur le port défini par `PORT` dans le fichier
+  `.env` (3000 par défaut). Pour viser une autre adresse, définissez la variable
+  d'environnement `API_URL`, par exemple `http://localhost:3001/api`.
+</Aside>
+
+## Et ensuite ?
+
+<LinkCard
+  title="Utiliser l'application"
+  description="Choisissez un dossier de ROMs, lancez une analyse et validez les propositions de l'IA."
+  href="../utiliser-l-application/"
+/>

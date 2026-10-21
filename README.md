@@ -118,23 +118,42 @@ reported to a future sprint. Use `npm run docker:dev` until then; there will be
 no **Nginx/reverse-proxy layer**, since this project is never hosted publicly
 (see [CONVENTIONS.md](./CONVENTIONS.md#infrastructure)).
 
+### Import the DAT catalogs
+
+The database starts empty: ROMs can only be identified once the No-Intro
+catalogs of `dataset/dat/` are imported. With the Docker stack running, run
+**one** of these scripts from the repository root:
+
+```bash
+./scripts/import-dat.sh                                      # Linux, macOS, Git Bash
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1   # Windows
+```
+
+The script checks that Docker is running and that the backend answers, then
+imports every `.dat` file not imported yet (safe to replay). On Windows, you can
+also right-click `scripts/import-dat.ps1` > **Run with PowerShell**.
+
 ## Scripts
 
-| Command                                   | Effect                                                       |
-| ----------------------------------------- | ------------------------------------------------------------ |
-| `npm run dev`                             | Runs `shared`, `backend`, `frontend` and `docs` in parallel. |
-| `npm run build`                           | Builds every workspace.                                      |
-| `npm run build:shared`                    | Builds `shared/` only.                                       |
-| `npm test`                                | Runs Vitest across all workspaces.                           |
-| `npm run lint` / `lint:fix`               | Oxlint, with or without autofix.                             |
-| `npm run format` / `format:check`         | Prettier, write or check-only.                               |
-| `npm run ts:check`                        | Type-checks the three `tsconfig` projects.                   |
-| `npm run db:generate`                     | Generates the Prisma client.                                 |
-| `npm run db:migrate`                      | Creates/applies Prisma migrations (dev).                     |
-| `npm run db:seed`                         | Seeds the database (safe to replay).                         |
-| `npm run db:studio`                       | Opens Prisma Studio.                                         |
-| `npm run docker:dev` / `:down` / `:reset` | Starts/stops/resets the dev stack.                           |
-| `npm run docker:prod` / `:down`           | **Not implemented yet** (future sprint).                     |
+| Command                                              | Effect                                                                        |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run dev`                                        | Runs `shared`, `backend`, `frontend` and `docs` in parallel.                  |
+| `npm run build`                                      | Builds every workspace.                                                       |
+| `npm run build:shared`                               | Builds `shared/` only.                                                        |
+| `npm test`                                           | Runs Vitest across all workspaces.                                            |
+| `npm run lint` / `lint:fix`                          | Oxlint, with or without autofix.                                              |
+| `npm run format` / `format:check`                    | Prettier, write or check-only.                                                |
+| `npm run ts:check`                                   | Type-checks the three `tsconfig` projects.                                    |
+| `npm run db:generate`                                | Generates the Prisma client.                                                  |
+| `npm run db:migrate`                                 | Creates/applies Prisma migrations (dev).                                      |
+| `npm run db:seed`                                    | Seeds the database (safe to replay).                                          |
+| `npm run db:studio`                                  | Opens Prisma Studio.                                                          |
+| `npm run docker:dev` / `:down` / `:reset`            | Starts/stops/resets the dev stack.                                            |
+| `npm run docker:prod` / `:down`                      | **Not implemented yet** (future sprint).                                      |
+| `./scripts/import-dat.sh` / `scripts\import-dat.ps1` | Imports the `dataset/dat/` catalogs not imported yet (stack must be running). |
 
 ## Repository structure
 
@@ -163,14 +182,17 @@ docs/
 dataset/
   dat/                      No-Intro .dat catalogs (versioned)
   roms/                     (legally) acquired ROMs for testing directory scans
+scripts/                    One-click helpers (import-dat.sh / import-dat.ps1)
 prompts/                    Versioned prompts consumed by the backend
 ```
 
 ## Dataset
 
-`dataset/dat/` holds six real **No-Intro `.dat` catalogs (Logiqx XML)** (Game
-Boy, Game Boy Color, Game Boy Advance, NES, SNES, Mega Drive) used to identify
-ROMs by **SHA-1, MD5 or normalized name**. Follow the
+`dataset/dat/` holds seven real **No-Intro `.dat` catalogs (Logiqx XML)** (Game
+Boy, Game Boy Color, Game Boy Advance, NES headered and headerless, SNES, Mega
+Drive) used to identify ROMs by **SHA-1, MD5 or normalized name**. Import them
+with `scripts/import-dat.sh` or `scripts/import-dat.ps1` (see
+[Getting started](#import-the-dat-catalogs)). Follow the
 [DAT-o-MATIC configuration](./CONTRIBUTING.md#dat-o-matic-configuration) before
 adding or replacing one.
 

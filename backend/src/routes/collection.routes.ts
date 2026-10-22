@@ -134,7 +134,8 @@ async function recordOutcome(
       reasoning: outcome.reasoning,
       issues: outcome.issues,
       tokensPerSecond: outcome.tokensPerSecond,
-      fromCache: false, // Grouping answers are never cached
+      // Grouping answers are never cached
+      fromCache: false,
     },
     rawResponse: outcome.raw,
     model: outcome.model,

@@ -149,3 +149,29 @@ export async function assertHnswIndexPresent(): Promise<void> {
     )
   }
 }
+
+/**
+ * Nearest ROMs of a user to a query vector, closest first.
+ * No similarity threshold on purpose (ADR-010): the raw cosine score is
+ * returned and the caller decides what to show; only `k` bounds the result.
+ */
+export async function findNearestToVector(
+  userId: string,
+  vector: number[],
+  k: number,
+): Promise<NearestRom[]> {
+  const literal = toVectorLiteral(vector)
+
+  return prisma.$queryRaw<NearestRom[]>(Prisma.sql`
+    SELECT
+      r."id" AS "romId",
+      r."fileName" AS "fileName",
+      r."title" AS "title",
+      1 - (e."embedding" <=> ${literal}::vector) AS "similarity"
+    FROM "RomEmbedding" e
+    JOIN "Rom" r ON r."id" = e."romId"
+    WHERE r."userId" = ${userId}
+    ORDER BY e."embedding" <=> ${literal}::vector
+    LIMIT ${k}
+  `)
+}

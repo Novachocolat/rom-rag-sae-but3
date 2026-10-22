@@ -1,6 +1,12 @@
 import type { InferenceStats } from '@repo/shared/types'
 import { formatDuration, formatTokensPerSecond } from '@/lib/format'
 
+// Null on proposals saved before the cache was tracked
+function formatCacheUsage(fromCache: boolean | null): string {
+  if (fromCache === null) return '—'
+  return fromCache ? 'yes' : 'no'
+}
+
 interface InferenceMetaProps {
   model: string
   promptName: string
@@ -38,7 +44,7 @@ export function InferenceMeta({
         {formatDuration(durationMs)}
       </span>
       <span>{formatTokensPerSecond(tokensPerSecond)}</span>
-      <span>Cache: {fromCache === null ? '—' : fromCache ? 'yes' : 'no'}</span>
+      <span>Cache: {formatCacheUsage(fromCache)}</span>
     </p>
   )
 }

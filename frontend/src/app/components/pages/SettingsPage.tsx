@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/app/components/ui/card.tsx'
-import MetricsPanel from '@/app/components/MetricsPanel'
+import { MetricsPanel } from '@/app/components/MetricsPanel'
 
 // Page for users to configure their account, currently display dependencies status
 export function SettingsPage() {

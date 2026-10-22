@@ -34,7 +34,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 // Settings panel: how the AI stack is configured and how it behaves
-export default function MetricsPanel() {
+export function MetricsPanel() {
   const { data: metrics, isError, isLoading } = useMetrics()
 
   // Stats of the model currently configured (older models may still have samples)

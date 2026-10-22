@@ -134,15 +134,14 @@ async function recordOutcome(
       reasoning: outcome.reasoning,
       issues: outcome.issues,
       tokensPerSecond: outcome.tokensPerSecond,
-      fromCache: false, // Never cache grouping answers
+      fromCache: false, // Grouping answers are never cached
     },
     rawResponse: outcome.raw,
     model: outcome.model,
     promptName: GROUPING_PROMPT.name,
     promptVersion: GROUPING_PROMPT.version,
     confidence: outcome.confidence,
-    // FIX (@ThFoxY, 2026-10-16): PostgreSQL's column is an Int:
-    durationMs: Math.round(outcome.durationMs),
+    durationMs: outcome.durationMs,
     promptTokens: outcome.promptTokens,
     completionTokens: outcome.completionTokens,
   }

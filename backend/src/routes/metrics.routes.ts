@@ -8,7 +8,12 @@ import { readRawMetrics } from '../storage/metrics.storage.js'
 
 export const metricsRouter = Router()
 
-// GET /api/metrics: JSON report on the AI stack
+/**
+ * GET /api/metrics: JSON report on the AI stack
+ * Inference, cache and error stats are global on purpose: every user shares the
+ * same Ollama instance and the same AI cache, whose keys hold no user id.
+ * Only the vector count is scoped to the user, since it measures their library.
+ */
 metricsRouter.get('/metrics', requireAuth, async (_req, res, next) => {
   try {
     const userId = res.locals.userId as string

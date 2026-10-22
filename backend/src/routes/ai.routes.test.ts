@@ -47,20 +47,23 @@ const identification = {
 }
 
 // A proposal row as the storage layer returns it, with its ROM included
+// `durationMs` is a column, while the other inference metrics live in the payload
 const proposalRow = {
   id: PROPOSAL_ID,
   romId: 'rom-1',
   status: 'PENDING',
   confidence: 0.9,
-  payload: { identification, issues: [], source: 'AI_PROPOSED' },
+  payload: {
+    identification,
+    issues: [],
+    source: 'AI_PROPOSED',
+    tokensPerSecond: 40,
+    fromCache: true,
+  },
   model: 'gemma4:26b',
   promptName: 'identification',
   promptVersion: 'v1',
-  inference: {
-    durationMs: 1,
-    tokensPerSecond: 1,
-    fromCache: true,
-  },
+  durationMs: 1200,
   createdAt: new Date('2026-10-06T10:00:00.000Z'),
   rom: { id: 'rom-1', userId: 'user-1', fileName: 'Tetris (World).gb' },
 }
@@ -96,7 +99,26 @@ describe('AI routes', () => {
         status: 'PENDING',
         source: 'AI_PROPOSED',
         identification,
+        inference: { durationMs: 1200, tokensPerSecond: 40, fromCache: true },
         createdAt: '2026-10-06T10:00:00.000Z',
+      })
+    })
+
+    it('exposes null metrics for a proposal saved before they were recorded', async () => {
+      vi.mocked(identifyStoredRom).mockResolvedValue({
+        ...proposalRow,
+        payload: { identification, issues: [], source: 'AI_PROPOSED' },
+        durationMs: null,
+      } as never)
+
+      const response = await request(createApp())
+        .post(`/api/ai/roms/${PROPOSAL_ID}/identify`)
+        .set('Cookie', AUTH_COOKIE)
+
+      expect(response.body.proposal.inference).toEqual({
+        durationMs: null,
+        tokensPerSecond: null,
+        fromCache: null,
       })
     })
 

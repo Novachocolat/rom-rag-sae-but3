@@ -261,7 +261,7 @@ export async function proposeIdentification(
     issues,
     raw: entry.raw,
     model: entry.model,
-    // Inference metrics in each proposal
+    // On a cache hit, these are the metrics of the original call
     durationMs: entry.durationMs,
     tokensPerSecond: entry.tokensPerSecond,
     promptTokens: entry.promptTokens,
@@ -278,6 +278,18 @@ export function mergeCorrections(
   return { ...identification, ...corrections }
 }
 
+// Counts each cache lookup as a hit or a miss
+// `getCachedIdentification` answers null on any miss (absent, corrupt or outdated entry), never undefined
+export function withCacheMetrics(
+  get: IdentificationPorts['cache']['get'],
+): IdentificationPorts['cache']['get'] {
+  return async (key) => {
+    const cached = await get(key)
+    void recordCacheLookup(cached !== null) // Best effort, never rejects
+    return cached
+  }
+}
+
 // Builds the real ports: Ollama, Redis cache, DAT catalogs and the prompt file
 async function buildRealPorts(
   platforms: PlatformInfo[],
@@ -290,11 +302,7 @@ async function buildRealPorts(
     renderPrompt: (variables) =>
       renderPrompt(IDENTIFICATION_PROMPT.name, variables),
     cache: {
-      get: async (key) => {
-        const cached = await getCachedIdentification(key)
-        void recordCacheLookup(cached !== null)
-        return cached
-      },
+      get: withCacheMetrics(getCachedIdentification),
       set: setCachedIdentification,
     },
     titleInCatalog: async (title, extension) =>
@@ -396,7 +404,7 @@ export async function identifyStoredRom(romId: string, userId: string) {
     promptVersion: IDENTIFICATION_PROMPT.version,
     confidence: outcome.confidence,
     status: statusFor(outcome.decision),
-    durationMs: Math.round(outcome.durationMs),
+    durationMs: outcome.durationMs,
     promptTokens: outcome.promptTokens,
     completionTokens: outcome.completionTokens,
   })

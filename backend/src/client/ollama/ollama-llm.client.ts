@@ -28,11 +28,12 @@ interface OllamaGenerateResponse {
 // Converts Ollama's nanosecond/count fields into our millisecond/tokens-per-
 // second metrics. Getting the 1e6/1e9 factors wrong silently inflates every
 // duration shown in the UI by a thousand, on a criterion that's explicitly graded.
+// `durationMs` is rounded here, once for every caller: proposals store it in an Int column
 function extractMetrics(res: OllamaGenerateResponse) {
   const evalDurationSeconds = res.eval_duration / 1e9
   return {
     model: res.model,
-    durationMs: res.total_duration / 1e6,
+    durationMs: Math.round(res.total_duration / 1e6),
     promptTokens: res.prompt_eval_count,
     completionTokens: res.eval_count,
     tokensPerSecond:
@@ -126,7 +127,7 @@ async function measured<
   }
 }
 
-// Gets metrics from generated outputs
+// Both calls go through `measured`, so no inference escapes the metrics
 const generateJson: LlmClient['generateJson'] = (opts) =>
   measured(() => runGenerateJson(opts))
 const generateText: LlmClient['generateText'] = (opts) =>

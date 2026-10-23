@@ -206,7 +206,7 @@ touching `docs/user/`.
 | [docs/CHANGELOG.md](./docs/CHANGELOG.md)       | Version history.                                                            |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layers and data flow.                                                       |
 | [docs/DATA_MODEL.md](./docs/DATA_MODEL.md)     | Relational and vector schema.                                               |
-| [docs/AI.md](./docs/AI.md)                     | Models, prompts, output schemas, robustness.                                |
+| [docs/AI.md](./docs/AI.md)                     | Models, prompts, output schemas, robustness, metrics (`GET /api/metrics`).  |
 | [docs/SECURITY.md](./docs/SECURITY.md)         | Security and data-integrity measures.                                       |
 | [docs/adr/](./docs/adr/)                       | Architecture Decision Records.                                              |
 | [docs/monitoring/](./docs/monitoring/)         | Sprints and User Stories.                                                   |

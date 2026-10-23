@@ -10,7 +10,8 @@ export const cachedIdentificationSchema = z.object({
   data: romIdentificationSchema,
   raw: z.string(),
   model: z.string(),
-  durationMs: z.number(),
+  // An older entry with an unrounded duration counts as a miss
+  durationMs: z.number().int(),
   promptTokens: z.number(),
   completionTokens: z.number(),
   tokensPerSecond: z.number(),

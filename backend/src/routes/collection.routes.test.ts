@@ -110,6 +110,7 @@ function makeOutcome(
     raw: '{"raw":true}',
     model: 'test-model',
     durationMs: 1,
+    tokensPerSecond: 1,
     promptTokens: 1,
     completionTokens: 1,
     ...overrides,

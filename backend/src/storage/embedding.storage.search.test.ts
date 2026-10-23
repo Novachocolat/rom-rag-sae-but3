@@ -4,7 +4,9 @@ import { env } from '../env.js'
 import { prisma } from '../lib/prisma.js'
 import { findNearestToVector, upsertEmbedding } from './embedding.storage.js'
 
-// Integration tests: need `docker compose up -d postgres`
+// Needs a migrated PostgreSQL (`docker compose up -d postgres`); opt-in, like
+// the other database integration tests
+const enabled = process.env.RUN_DB_INTEGRATION === '1'
 
 let userId: string
 let otherUserId: string
@@ -41,33 +43,35 @@ async function createRom(
   return rom.id
 }
 
-beforeAll(async () => {
-  const users = await Promise.all(
-    [0, 1].map(() =>
-      prisma.user.create({
-        data: {
-          email: `embedding-search-${randomUUID()}@example.com`,
-          passwordHash: 'irrelevant',
-        },
-      }),
-    ),
-  )
-  userId = users[0]?.id ?? ''
-  otherUserId = users[1]?.id ?? ''
-})
+describe.skipIf(!enabled)('findNearestToVector on PostgreSQL', () => {
+  beforeAll(async () => {
+    const users = await Promise.all(
+      [0, 1].map(() =>
+        prisma.user.create({
+          data: {
+            email: `embedding-search-${randomUUID()}@example.com`,
+            passwordHash: 'irrelevant',
+          },
+        }),
+      ),
+    )
+    userId = users[0]?.id ?? ''
+    otherUserId = users[1]?.id ?? ''
+  })
 
-afterEach(async () => {
-  await prisma.romEmbedding.deleteMany({ where: { romId: { in: romIds } } })
-  await prisma.rom.deleteMany({ where: { id: { in: romIds } } })
-  romIds.length = 0
-})
+  afterEach(async () => {
+    await prisma.romEmbedding.deleteMany({ where: { romId: { in: romIds } } })
+    await prisma.rom.deleteMany({ where: { id: { in: romIds } } })
+    romIds.length = 0
+  })
 
-afterAll(async () => {
-  await prisma.user.deleteMany({ where: { id: { in: [userId, otherUserId] } } })
-  await prisma.$disconnect()
-})
+  afterAll(async () => {
+    await prisma.user.deleteMany({
+      where: { id: { in: [userId, otherUserId] } },
+    })
+    await prisma.$disconnect()
+  })
 
-describe('findNearestToVector', () => {
   it('returns the closest ROMs first with their raw cosine score', async () => {
     const near = await createRom(userId, 'near', vec(1, 0.1))
     const far = await createRom(userId, 'far', vec(0, 1))

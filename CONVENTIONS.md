@@ -57,6 +57,10 @@ file rather than inventing a new pattern.
 - `backend/src/routes` — Express route handlers; delegate to `service/`.
 - `frontend/src/components/ui` — shadcn-generated components, not hand-edited
   (regenerate via `npx shadcn add`).
+- `scripts/` — holds one-click shell helpers, always shipped as a `.sh` + `.ps1`
+  pair.
+- `prompts/` — Markdown templates with parameters. Restricts AI's answers.
+- `dataset/` — contains valid ROMs and DAT catalogs for testing purposes.
 
 ## Imports
 

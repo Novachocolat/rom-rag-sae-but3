@@ -6,6 +6,7 @@ import {
   assertHnswIndexPresent,
   countEmbeddings,
   findNearest,
+  findNearestToVector,
   findRomsWithoutEmbedding,
   getMemberSimilarities,
   upsertEmbedding,
@@ -77,6 +78,35 @@ describe('embedding.storage', () => {
       expect(sql.values.some((v) => Math.abs(Number(v) - 0.1) < 1e-9)).toBe(
         true,
       )
+      expect(sql.values).toContain(env.OLLAMA_EMBEDDING_MODEL)
+    })
+  })
+
+  describe('findNearestToVector', () => {
+    it('scans the configured model exactly and binds the ids as one array', async () => {
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([])
+
+      await findNearestToVector('user-1', vector, 100, ['rom-1', 'rom-2'])
+
+      const sql = sqlOf(prisma.$queryRaw)
+      expect(sql.sql).toContain('MATERIALIZED')
+      expect(sql.sql).toContain('ANY(')
+      expect(sql.values).toContainEqual(['rom-1', 'rom-2'])
+      expect(sql.values).toContain(env.OLLAMA_EMBEDDING_MODEL)
+      expect(sql.values).toContain(100)
+    })
+
+    it('ranks every ROM of the user when no ids are given', async () => {
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([])
+
+      await findNearestToVector('user-1', vector, 100)
+
+      expect(sqlOf(prisma.$queryRaw).sql).not.toContain('ANY(')
+    })
+
+    it('answers an empty id list without querying', async () => {
+      expect(await findNearestToVector('user-1', vector, 100, [])).toEqual([])
+      expect(prisma.$queryRaw).not.toHaveBeenCalled()
     })
   })
 

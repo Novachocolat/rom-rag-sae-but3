@@ -8,6 +8,7 @@ import type {
   proposalCorrectionsSchema,
   proposalReviewSchema,
   romIdentificationSchema,
+  inferenceStatsSchema,
 } from '../schemas/ai.schema.js'
 
 export type RomIdentification = z.infer<typeof romIdentificationSchema>
@@ -20,3 +21,4 @@ export type ProposalCorrections = z.infer<typeof proposalCorrectionsSchema>
 export type ProposalReview = z.infer<typeof proposalReviewSchema>
 export type AiProposalListQuery = z.infer<typeof aiProposalListQuerySchema>
 export type CollectionGrouping = z.infer<typeof collectionGroupingSchema>
+export type InferenceStats = z.infer<typeof inferenceStatsSchema>

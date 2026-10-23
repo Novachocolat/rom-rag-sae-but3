@@ -26,6 +26,7 @@ import {
 } from '@/app/components/ui/dialog'
 import { useReviewProposal } from '@/app/hooks/ai/useReviewProposal'
 import { ApiError } from '@/lib/api-error'
+import { InferenceMeta } from '@/app/components/ai/InferenceMeta'
 
 interface ProposalState {
   label: string
@@ -166,15 +167,19 @@ export function ProposalCard({
           </Alert>
         )}
 
-        <p className="text-xs text-muted-foreground">
-          Model <code>{proposal.model}</code> · prompt{' '}
-          <code>
-            {proposal.promptName}@{proposal.promptVersion}
-          </code>{' '}
-          · {new Date(proposal.createdAt).toLocaleString()}
-          {identification.confidence !== proposal.confidence &&
-            ` · the model's own score was ${identification.confidence.toFixed(2)}, adjusted because the title exists in an imported catalog`}
-        </p>
+        <div className="space-y-1">
+          <InferenceMeta
+            model={proposal.model}
+            promptName={proposal.promptName}
+            promptVersion={proposal.promptVersion}
+            inference={proposal.inference}
+          />
+          <p className="text-xs text-muted-foreground">
+            {new Date(proposal.createdAt).toLocaleString()}
+            {identification.confidence !== proposal.confidence &&
+              ` · the model's own score was ${identification.confidence.toFixed(2)}, adjusted because the title exists in an imported catalog`}
+          </p>
+        </div>
       </CardContent>
 
       {/* Reviewing only writes to the database */}

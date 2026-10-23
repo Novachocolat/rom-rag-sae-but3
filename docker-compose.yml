@@ -134,7 +134,7 @@ services:
 
   docs:
     <<: *dev-image
-    command: npm run dev -w @repo/docs
+    command: npm run dev -w @repo/docs -- --ignore-lock
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: 'true'

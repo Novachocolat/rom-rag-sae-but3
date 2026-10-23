@@ -1,3 +1,4 @@
+import type { RomSortKey } from '@repo/shared/schemas'
 import type {
   IdentificationSource,
   Platform,
@@ -31,16 +32,13 @@ export interface UpsertRomInput {
   summary?: string | null
 }
 
-export type RomSortKey =
-  'fileName' | 'title' | 'releaseYear' | 'sizeBytes' | 'lastScannedAt'
-
-export interface ListRomsFilters {
+export interface RomFilters {
   userId: string
   platformId?: string
   identificationSource?: IdentificationSource
   region?: string
   search?: string
-  // Inclusive bounds on the release year a ROM without a year never matches
+  // Inclusive bounds on the release year; a ROM without a year never matches
   yearMin?: number
   yearMax?: number
   // `collectionId` wins over `inCollection` when both are given
@@ -49,6 +47,9 @@ export interface ListRomsFilters {
   // Restrict to, or exclude, a set of ROM ids (resolved by the caller)
   includeIds?: string[]
   excludeIds?: string[]
+}
+
+export interface ListRomsFilters extends RomFilters {
   sort?: RomSortKey
   order?: 'asc' | 'desc'
   page?: number
@@ -105,7 +106,7 @@ export function upsertRom(input: UpsertRomInput): Promise<Rom> {
   })
 }
 
-// Returns a ROM by id or null if it does not exist
+// Returns a ROM by id, or null if it does not exist
 export function findRomById(id: string): Promise<Rom | null> {
   return prisma.rom.findUnique({ where: { id } })
 }
@@ -122,15 +123,8 @@ export function findRomDetail(
   })
 }
 
-// Lists a user's ROMs matching `filters`, 20 per page by default
-export async function listRoms(
-  filters: ListRomsFilters,
-): Promise<ListRomsResult> {
-  const page = filters.page && filters.page > 0 ? filters.page : 1
-  const pageSize =
-    filters.pageSize && filters.pageSize > 0 ? filters.pageSize : 20
-
-  const where: Prisma.RomWhereInput = {
+function romWhere(filters: RomFilters): Prisma.RomWhereInput {
+  return {
     userId: filters.userId,
     ...(filters.platformId && { platformId: filters.platformId }),
     ...(filters.identificationSource && {
@@ -168,6 +162,16 @@ export async function listRoms(
       },
     }),
   }
+}
+
+// Lists a user's ROMs matching `filters`, 20 per page by default
+export async function listRoms(
+  filters: ListRomsFilters,
+): Promise<ListRomsResult> {
+  const page = filters.page && filters.page > 0 ? filters.page : 1
+  const pageSize =
+    filters.pageSize && filters.pageSize > 0 ? filters.pageSize : 20
+  const where = romWhere(filters)
 
   // `id` breaks ties, so offset pagination never repeats or skips a row
   const orderBy: Prisma.RomOrderByWithRelationInput[] = [
@@ -189,6 +193,15 @@ export async function listRoms(
   return { roms, total, page, pageSize }
 }
 
+// Ids of every ROM of a user matching `filters`, unpaged and unordered
+export async function listRomIds(filters: RomFilters): Promise<string[]> {
+  const rows = await prisma.rom.findMany({
+    where: romWhere(filters),
+    select: { id: true },
+  })
+  return rows.map((row) => row.id)
+}
+
 // What duplicate detection needs from every ROM of a user, and nothing more
 export function listDuplicateCandidates(
   userId: string,
@@ -206,7 +219,7 @@ export function listDuplicateCandidates(
   })
 }
 
-// Counts a user's ROMs per identification source
+// Counts a user's ROMs per identification source; absent sources have no key
 export async function countRomsByStatus(
   userId: string,
 ): Promise<Partial<Record<IdentificationSource, number>>> {

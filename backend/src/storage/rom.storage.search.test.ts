@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import type { Prisma } from '../generated/prisma/client.js'
 import { prisma } from '../lib/prisma.js'
-import { listDuplicateCandidates, listRoms } from './rom.storage.js'
+import { listDuplicateCandidates, listRomIds, listRoms } from './rom.storage.js'
 
 // Integration tests: need `docker compose up -d postgres`
 
@@ -175,19 +175,39 @@ describe('listRoms: sort', () => {
     ])
   })
 
-  it('never repeats or skips a row across pages with equal sort values', async () => {
-    for (const name of ['a', 'b', 'c', 'd', 'e']) {
-      await createRom(name, { releaseYear: 1990 })
+  it('breaks ties on the id, so pages never repeat or skip a row', async () => {
+    // Inserted in descending id order: without the tie-break, equal rows
+    // would come back in insertion order
+    const ids = Array.from({ length: 5 }, () => randomUUID()).sort()
+    for (const id of [...ids].reverse()) {
+      await createRom(id, { id, releaseYear: 1990 })
     }
 
     const seen: string[] = []
     for (const page of [1, 2, 3]) {
-      seen.push(
-        ...(await names({ userId, sort: 'releaseYear', page, pageSize: 2 })),
-      )
+      const { roms } = await listRoms({
+        userId,
+        sort: 'releaseYear',
+        page,
+        pageSize: 2,
+      })
+      seen.push(...roms.map((rom) => rom.id))
     }
 
-    expect(new Set(seen).size).toBe(5)
+    expect(seen).toEqual(ids)
+  })
+})
+
+describe('listRomIds', () => {
+  it('returns the ids of the matching ROMs of the user, unpaged', async () => {
+    const old = await createRom('old', { releaseYear: 1985 })
+    const older = await createRom('older', { releaseYear: 1980 })
+    await createRom('new', { releaseYear: 2001 })
+    await createRom('foreign', { releaseYear: 1985 }, otherUserId)
+
+    const ids = await listRomIds({ userId, yearMax: 1990 })
+
+    expect(ids.sort()).toEqual([old, older].sort())
   })
 })
 

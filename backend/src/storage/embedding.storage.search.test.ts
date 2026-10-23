@@ -22,6 +22,7 @@ async function createRom(
   owner: string,
   name: string,
   embedding: number[],
+  model: string = env.OLLAMA_EMBEDDING_MODEL,
 ): Promise<string> {
   const rom = await prisma.rom.create({
     data: {
@@ -36,7 +37,7 @@ async function createRom(
     },
   })
   romIds.push(rom.id)
-  await upsertEmbedding(rom.id, embedding, name, 'test-model')
+  await upsertEmbedding(rom.id, embedding, name, model)
   return rom.id
 }
 
@@ -102,6 +103,31 @@ describe('findNearestToVector', () => {
     await createRom(userId, 'c', vec(0.8, 0.2))
 
     expect(await findNearestToVector(userId, vec(1), 2)).toHaveLength(2)
+  })
+
+  it('restricts to romIds before applying k', async () => {
+    await createRom(userId, 'closest', vec(1))
+    await createRom(userId, 'close', vec(0.9, 0.1))
+    const far = await createRom(userId, 'far', vec(0, 1))
+
+    const result = await findNearestToVector(userId, vec(1), 1, [far])
+
+    expect(result.map((row) => row.romId)).toEqual([far])
+  })
+
+  it('returns nothing for an empty romIds', async () => {
+    await createRom(userId, 'a', vec(1))
+
+    expect(await findNearestToVector(userId, vec(1), 5, [])).toEqual([])
+  })
+
+  it('ignores a vector of another model', async () => {
+    const current = await createRom(userId, 'current', vec(0, 1))
+    await createRom(userId, 'stale', vec(1), 'old-model')
+
+    const result = await findNearestToVector(userId, vec(1), 5)
+
+    expect(result.map((row) => row.romId)).toEqual([current])
   })
 
   it('refuses a vector of the wrong dimension', async () => {

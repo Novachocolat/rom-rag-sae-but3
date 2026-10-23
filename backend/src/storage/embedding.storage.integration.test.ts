@@ -14,6 +14,9 @@ import {
 // Needs a migrated PostgreSQL with pgvector; no model involved, vectors are synthetic
 const enabled = process.env.RUN_DB_INTEGRATION === '1'
 
+// Only vectors of the configured model are compared
+const MODEL = env.OLLAMA_EMBEDDING_MODEL
+
 // Unit vector pointing mostly along `axis`, tilted by `tilt` towards the next axis
 function vectorAt(axis: number, tilt = 0): number[] {
   const vector = Array.from({ length: env.OLLAMA_EMBEDDING_DIM }, () => 0)
@@ -57,10 +60,10 @@ describe.skipIf(!enabled)('embedding.storage on PostgreSQL', () => {
     ids.foreign = await createRom(otherUserId, 'foreign')
     ids.none = await createRom(userId, 'none')
 
-    await upsertEmbedding(ids.base as string, vectorAt(0), 'base', 'm')
-    await upsertEmbedding(ids.close as string, vectorAt(0, 0.1), 'close', 'm')
-    await upsertEmbedding(ids.far as string, vectorAt(5), 'far', 'm')
-    await upsertEmbedding(ids.foreign as string, vectorAt(0), 'foreign', 'm')
+    await upsertEmbedding(ids.base as string, vectorAt(0), 'base', MODEL)
+    await upsertEmbedding(ids.close as string, vectorAt(0, 0.1), 'close', MODEL)
+    await upsertEmbedding(ids.far as string, vectorAt(5), 'far', MODEL)
+    await upsertEmbedding(ids.foreign as string, vectorAt(0), 'foreign', MODEL)
   })
 
   afterAll(async () => {
@@ -121,7 +124,7 @@ describe.skipIf(!enabled)('embedding.storage on PostgreSQL', () => {
   })
 
   it('updates the vector in place on a second upsert', async () => {
-    await upsertEmbedding(ids.far as string, vectorAt(0, 0.05), 'far v2', 'm')
+    await upsertEmbedding(ids.far as string, vectorAt(0, 0.05), 'far v2', MODEL)
 
     const result = await findNearest(ids.base as string, 5, 0.9)
     expect(result.map((n) => n.romId)).toContain(ids.far)
@@ -132,5 +135,14 @@ describe.skipIf(!enabled)('embedding.storage on PostgreSQL', () => {
     const missing = await findRomsWithoutEmbedding(userId)
 
     expect(missing.map((r) => r.id)).toEqual([ids.none])
+  })
+
+  it('never compares a vector of another model', async () => {
+    await upsertEmbedding(ids.none as string, vectorAt(0), 'none', 'old-model')
+
+    const result = await findNearest(ids.base as string, 10, 0)
+
+    expect(result.map((n) => n.romId)).not.toContain(ids.none)
+    expect(await findNearest(ids.none as string, 10, 0)).toEqual([])
   })
 })

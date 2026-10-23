@@ -1,2 +1,3 @@
 # Ensures CI runners work on Linux
 * text=auto eol=lf
+dataset/roms/** binary

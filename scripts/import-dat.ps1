@@ -3,15 +3,25 @@
 .SYNOPSIS
   Imports every No-Intro .dat catalog of dataset/dat/ not imported yet.
 .DESCRIPTION
-  Requires Docker running and the backend answering (`npm run docker:dev`).
+  Requires the backend answering: by default the one of the Docker stack
+  (`npm run docker:dev`), checked through Docker.
   Works with Windows PowerShell 5.1 and PowerShell 7+ (Windows, macOS, Linux).
 .PARAMETER ApiUrl
-  Base URL of the API (defaults to http://localhost:<PORT from .env>/api).
+  Base URL of the API (defaults to http://localhost:<PORT from .env>/api, or to
+  the API_URL environment variable). When set, the Docker checks are skipped,
+  to target a backend running elsewhere (remote, or `npm run dev`).
+.PARAMETER Force
+  Replaces the catalogs already imported under the same file name (deleted,
+  then imported again) instead of skipping them. Alias: -F.
 .EXAMPLE
   ./scripts/import-dat.ps1
+.EXAMPLE
+  ./scripts/import-dat.ps1 -Force
 #>
 param(
-  [string]$ApiUrl = $env:API_URL
+  [string]$ApiUrl = $env:API_URL,
+  [Alias('F')]
+  [switch]$Force
 )
 
 $RootDir = Split-Path -Parent $PSScriptRoot
@@ -40,13 +50,50 @@ function Get-HttpStatus($ErrorRecord) {
   return 0
 }
 
-# Message of the backend JSON error ({ error: { message } }), if any
-function Get-ApiErrorMessage($ErrorRecord) {
-  try { return ($ErrorRecord.ErrorDetails.Message | ConvertFrom-Json).error.message }
-  catch { return $ErrorRecord.Exception.Message }
+# Backend JSON error ({ error: { code, message } }), or $null. PowerShell 7 fills
+# ErrorDetails, Windows PowerShell 5.1 only gives the response stream (read once)
+function Get-ApiError($ErrorRecord) {
+  try {
+    $body = $ErrorRecord.ErrorDetails.Message
+    if (-not $body) {
+      $body = (New-Object System.IO.StreamReader($ErrorRecord.Exception.Response.GetResponseStream())).ReadToEnd()
+    }
+    return ($body | ConvertFrom-Json -ErrorAction Stop).error
+  } catch { return $null }
+}
+
+# Whether the request failed because of the client timeout (the server may still be working)
+function Test-IsTimeout($ErrorRecord) {
+  $exception = $ErrorRecord.Exception
+  while ($exception) {
+    if ($exception -is [System.TimeoutException] -or
+        $exception -is [System.Threading.Tasks.TaskCanceledException]) { return $true }
+    if ($exception -is [System.Net.WebException] -and
+        $exception.Status -eq [System.Net.WebExceptionStatus]::Timeout) { return $true }
+    $exception = $exception.InnerException
+  }
+  return $false
+}
+
+# Prints the counters, also before an abort so that finished imports are not lost
+function Write-Summary {
+  Write-Host "`n$script:imported imported, $script:replaced replaced, $script:skipped skipped, $script:failed failed."
+}
+
+# Counts the file as failed, prints the counters, then stops the script. A timeout
+# means the server may still be working, so do not replay yet
+function Stop-Unreachable([string]$FileName, $ErrorRecord, [string]$Step) {
+  Write-Host 'failed' -ForegroundColor Red
+  $script:failed++
+  Write-Summary
+  if (Test-IsTimeout $ErrorRecord) {
+    Stop-WithError "Timed out waiting for the $Step of $FileName. The backend may still be working on it: check `"npm run docker:dev:logs`" and wait for it to end before running the script again."
+  }
+  Stop-WithError "The backend stopped answering during the $Step of $FileName."
 }
 
 # Reads PORT from .env, like docker-compose.yml does (defaults to 3000)
+$customApiUrl = [bool]$ApiUrl
 if (-not $ApiUrl) {
   $port = '3000'
   $envFile = Join-Path $RootDir '.env'
@@ -57,17 +104,23 @@ if (-not $ApiUrl) {
   $ApiUrl = "http://localhost:$port/api"
 }
 
-# 1. Docker must be installed, running, and the stack started
-if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-  Stop-WithError 'Docker is not installed (https://docs.docker.com/get-docker/).'
-}
-docker info *> $null
-if ($LASTEXITCODE -ne 0) {
-  Stop-WithError 'Docker is not running. Start Docker Desktop (or the Docker daemon), then run "npm run docker:dev".'
-}
-$services = docker compose -f (Join-Path $RootDir 'docker-compose.yml') ps --status running --services 2> $null
-if (@($services) -notcontains 'backend') {
-  Stop-WithError 'The backend container is not running. Start the stack with "npm run docker:dev" first.'
+# 1. Without ApiUrl, Docker must be installed, running, and the stack started
+if (-not $customApiUrl) {
+  if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    Stop-WithError 'Docker is not installed (https://docs.docker.com/get-docker/). To target a backend running elsewhere, set API_URL.'
+  }
+  docker info *> $null
+  if ($LASTEXITCODE -ne 0) {
+    Stop-WithError 'Docker is not running. Start Docker Desktop (or the Docker daemon), then run "npm run docker:dev".'
+  }
+  docker compose version *> $null
+  if ($LASTEXITCODE -ne 0) {
+    Stop-WithError 'Docker Compose v2 is required ("docker compose", not "docker-compose"). To target a backend running elsewhere, set API_URL.'
+  }
+  $services = docker compose -f (Join-Path $RootDir 'docker-compose.yml') ps --status running --services 2> $null
+  if (@($services) -notcontains 'backend') {
+    Stop-WithError 'The backend container is not running. Start the stack with "npm run docker:dev" first, or set API_URL to target another backend.'
+  }
 }
 
 # 2. The backend must answer, with PostgreSQL and Redis up
@@ -84,31 +137,60 @@ if (-not (Test-Path -LiteralPath $DatDir -PathType Container)) {
   Stop-WithError "Directory not found: $DatDir"
 }
 
-# 3. Catalogs already imported, to skip them without re-reading them
+# 3. Catalogs already imported, to skip (or replace) them
 try {
-  $catalog = (Invoke-RestMethod -Uri "$ApiUrl/dat" -TimeoutSec 10 -ErrorAction Stop).data
+  $catalog = @((Invoke-RestMethod -Uri "$ApiUrl/dat" -TimeoutSec 10 -ErrorAction Stop).data)
 } catch {
   Stop-WithError "Could not list the imported catalogs (GET $ApiUrl/dat)."
 }
-$importedNames = @($catalog | ForEach-Object { $_.fileName })
 
 $files = @(Get-ChildItem -LiteralPath $DatDir -File | Where-Object { $_.Extension -eq '.dat' } | Sort-Object Name)
 if ($files.Count -eq 0) { Stop-WithError "No .dat file found in $DatDir" }
 
 $imported = 0
+$replaced = 0
 $skipped = 0
 $failed = 0
 
 Write-Host "Importing .dat catalogs from $DatDir`n"
 
 foreach ($file in $files) {
-  if ($importedNames -contains $file.Name) {
-    Write-Host "  skipped   $($file.Name) (already imported)"
+  $existing = @($catalog | Where-Object { $_.fileName -eq $file.Name })
+  $replacing = $existing.Count -gt 0
+  if ($replacing -and -not $Force) {
+    Write-Host "  skipped   $($file.Name) (already imported, use -Force to replace it)"
     $skipped++
     continue
   }
 
-  Write-Host "  importing $($file.Name)... " -NoNewline
+  # 4. Replacing: the catalogs of the same file name are deleted first, with their entries
+  if ($replacing) {
+    Write-Host "  replacing $($file.Name)... " -NoNewline
+    $deleteFailed = $false
+    foreach ($entry in $existing) {
+      try {
+        $null = Invoke-RestMethod -Method Delete -Uri "$ApiUrl/dat/$($entry.id)" -TimeoutSec 30 -ErrorAction Stop
+      } catch {
+        $status = Get-HttpStatus $_
+        if ($status -eq 0) { Stop-Unreachable $file.Name $_ 'deletion' }
+        $apiError = Get-ApiError $_
+        if ($apiError.code -eq 'FOREIGN_KEY_CONSTRAINT') {
+          # ROMs matched against this catalog still reference its entries
+          $message = 'ROMs still reference this catalog, it cannot be replaced'
+        } else {
+          $message = if ($apiError.message) { $apiError.message } else { $_.Exception.Message }
+        }
+        Write-Host "failed (HTTP ${status}: $message)" -ForegroundColor Red
+        $failed++
+        $deleteFailed = $true
+        break
+      }
+    }
+    if ($deleteFailed) { continue }
+  } else {
+    Write-Host "  importing $($file.Name)... " -NoNewline
+  }
+
   # UTF-8 bytes, since Windows PowerShell 5.1 would send the body as ISO-8859-1
   $body = [Text.Encoding]::UTF8.GetBytes((@{ fileName = $file.Name } | ConvertTo-Json -Compress))
 
@@ -117,23 +199,30 @@ foreach ($file in $files) {
       -ContentType 'application/json; charset=utf-8' -Body $body `
       -TimeoutSec 600 -ErrorAction Stop
     Write-Host "done ($($result.insertedEntries) entries)" -ForegroundColor Green
-    $imported++
+    if ($replacing) { $replaced++ } else { $imported++ }
   } catch {
     $status = Get-HttpStatus $_
-    if ($status -eq 409) {
-      # Same content already imported under another file name
-      Write-Host 'skipped (same content already imported)'
+    $apiError = Get-ApiError $_
+    if ($status -eq 409 -and $apiError.code -eq 'DAT_ALREADY_IMPORTED') {
+      # Same content already imported (e.g. under another file name); any other
+      # conflict is a real failure
+      if ($replacing) {
+        Write-Host 'skipped (same content already imported under another file name, the previous version was removed)'
+      } else {
+        Write-Host 'skipped (same content already imported)'
+      }
       $skipped++
     } elseif ($status -eq 0) {
-      Write-Host 'failed' -ForegroundColor Red
-      Stop-WithError "The backend stopped answering while importing $($file.Name)."
+      Stop-Unreachable $file.Name $_ 'import'
     } else {
-      Write-Host "failed (HTTP ${status}: $(Get-ApiErrorMessage $_))" -ForegroundColor Red
+      $message = if ($apiError.message) { $apiError.message } else { $_.Exception.Message }
+      Write-Host "failed (HTTP ${status}: $message)" -ForegroundColor Red
+      if ($replacing) { Write-Host '    the previous version was removed: run the script again to import it.' }
       $failed++
     }
   }
 }
 
-Write-Host "`n$imported imported, $skipped skipped, $failed failed."
+Write-Summary
 Wait-IfLaunchedFromExplorer
 if ($failed -gt 0) { exit 1 }

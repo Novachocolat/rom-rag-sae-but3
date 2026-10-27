@@ -184,7 +184,10 @@ ROM with the canonical NES 2.0 header, which real dumps rarely carry: with it,
 most NES ROMs stay `UNIDENTIFIED`.
 
 Once the file is in `dataset/dat/`, run `scripts/import-dat.sh` (or `.ps1`) to
-import it; already imported catalogs are skipped.
+import it; already imported catalogs are skipped. To replace a catalog with an
+updated file of the same name, run the script with `--force` (`-Force` for the
+`.ps1`): see [Import the DAT catalogs](./README.md#import-the-dat-catalogs) for
+its limits.
 
 ## Secrets
 

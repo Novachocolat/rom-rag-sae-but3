@@ -136,6 +136,35 @@ The script checks that Docker is running and that the backend answers, then
 imports every `.dat` file not imported yet (safe to replay). On Windows, you can
 also right-click `scripts/import-dat.ps1` > **Run with PowerShell**.
 
+**Replacing a catalog.** By default, a `.dat` file whose name is already
+imported is skipped, and so is a file whose content is already imported under
+another name. To replace the catalogs already imported under the same file name
+(for example an updated version of a `.dat`), add `-F` / `--force` (`-F` /
+`-Force` for the PowerShell script):
+
+```bash
+./scripts/import-dat.sh --force
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1 -Force
+```
+
+Each existing catalog is deleted with its entries, then the file is imported
+again. Two limits to know:
+
+- A catalog that scanned ROMs are already matched against cannot be deleted
+  (HTTP 409): the script reports it and leaves it untouched.
+- If the import fails after the deletion, the previous catalog is gone: fix the
+  file, then run the script again (without the option) to import it.
+
+**Another backend.** To import into a backend that does not run in this Docker
+stack (remote, or `npm run dev` with only PostgreSQL in Docker), set `API_URL`
+to its API, for example
+`API_URL=http://localhost:3000/api ./scripts/import-dat.sh` (PowerShell:
+`-ApiUrl` or `$env:API_URL`). The Docker checks are then skipped, only the
+backend `/health` answer is required.
+
 ## Scripts
 
 | Command                                              | Effect                                                                        |
@@ -153,7 +182,7 @@ also right-click `scripts/import-dat.ps1` > **Run with PowerShell**.
 | `npm run db:studio`                                  | Opens Prisma Studio.                                                          |
 | `npm run docker:dev` / `:down` / `:reset`            | Starts/stops/resets the dev stack.                                            |
 | `npm run docker:prod` / `:down`                      | **Not implemented yet** (future sprint).                                      |
-| `./scripts/import-dat.sh` / `scripts\import-dat.ps1` | Imports the `dataset/dat/` catalogs not imported yet (stack must be running). |
+| `./scripts/import-dat.sh` / `scripts\import-dat.ps1` | Imports the `dataset/dat/` catalogs not imported yet (`-F` forces replacing). |
 
 ## Repository structure
 
@@ -194,7 +223,8 @@ Drive) used to identify ROMs by **SHA-1, MD5 or normalized name**. Import them
 with `scripts/import-dat.sh` or `scripts/import-dat.ps1` (see
 [Getting started](#import-the-dat-catalogs)). Follow the
 [DAT-o-MATIC configuration](./CONTRIBUTING.md#dat-o-matic-configuration) before
-adding or replacing one.
+adding or replacing one (a replacement needs the `--force` option of the
+scripts).
 
 `dataset/roms/` holds **real ROMs**, one folder per platform, for exercising the
 directory scanner; `broken/` and `duplicates/` sub-folders hold the empty,

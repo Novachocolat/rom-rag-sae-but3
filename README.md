@@ -118,23 +118,71 @@ reported to a future sprint. Use `npm run docker:dev` until then; there will be
 no **Nginx/reverse-proxy layer**, since this project is never hosted publicly
 (see [CONVENTIONS.md](./CONVENTIONS.md#infrastructure)).
 
+### Import the DAT catalogs
+
+The database starts empty: ROMs can only be identified once the No-Intro
+catalogs of `dataset/dat/` are imported. With the Docker stack running, run
+**one** of these scripts from the repository root:
+
+```bash
+./scripts/import-dat.sh                                      # Linux, macOS, Git Bash
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1   # Windows
+```
+
+The script checks that Docker is running and that the backend answers, then
+imports every `.dat` file not imported yet (safe to replay). On Windows, you can
+also right-click `scripts/import-dat.ps1` > **Run with PowerShell**.
+
+**Replacing a catalog.** By default, a `.dat` file whose name is already
+imported is skipped, and so is a file whose content is already imported under
+another name. To replace the catalogs already imported under the same file name
+(for example an updated version of a `.dat`), add `-F` / `--force` (`-F` /
+`-Force` for the PowerShell script):
+
+```bash
+./scripts/import-dat.sh --force
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1 -Force
+```
+
+Each existing catalog is deleted with its entries, then the file is imported
+again. Two limits to know:
+
+- A catalog that scanned ROMs are already matched against cannot be deleted
+  (HTTP 409): the script reports it and leaves it untouched.
+- If the import fails after the deletion, the previous catalog is gone: fix the
+  file, then run the script again (without the option) to import it.
+
+**Another backend.** To import into a backend that does not run in this Docker
+stack (remote, or `npm run dev` with only PostgreSQL in Docker), set `API_URL`
+to its API, for example
+`API_URL=http://localhost:3000/api ./scripts/import-dat.sh` (PowerShell:
+`-ApiUrl` or `$env:API_URL`). The Docker checks are then skipped, only the
+backend `/health` answer is required.
+
 ## Scripts
 
-| Command                                   | Effect                                                       |
-| ----------------------------------------- | ------------------------------------------------------------ |
-| `npm run dev`                             | Runs `shared`, `backend`, `frontend` and `docs` in parallel. |
-| `npm run build`                           | Builds every workspace.                                      |
-| `npm run build:shared`                    | Builds `shared/` only.                                       |
-| `npm test`                                | Runs Vitest across all workspaces.                           |
-| `npm run lint` / `lint:fix`               | Oxlint, with or without autofix.                             |
-| `npm run format` / `format:check`         | Prettier, write or check-only.                               |
-| `npm run ts:check`                        | Type-checks the three `tsconfig` projects.                   |
-| `npm run db:generate`                     | Generates the Prisma client.                                 |
-| `npm run db:migrate`                      | Creates/applies Prisma migrations (dev).                     |
-| `npm run db:seed`                         | Seeds the database (safe to replay).                         |
-| `npm run db:studio`                       | Opens Prisma Studio.                                         |
-| `npm run docker:dev` / `:down` / `:reset` | Starts/stops/resets the dev stack.                           |
-| `npm run docker:prod` / `:down`           | **Not implemented yet** (future sprint).                     |
+| Command                                              | Effect                                                                        |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run dev`                                        | Runs `shared`, `backend`, `frontend` and `docs` in parallel.                  |
+| `npm run build`                                      | Builds every workspace.                                                       |
+| `npm run build:shared`                               | Builds `shared/` only.                                                        |
+| `npm test`                                           | Runs Vitest across all workspaces.                                            |
+| `npm run lint` / `lint:fix`                          | Oxlint, with or without autofix.                                              |
+| `npm run format` / `format:check`                    | Prettier, write or check-only.                                                |
+| `npm run ts:check`                                   | Type-checks the three `tsconfig` projects.                                    |
+| `npm run db:generate`                                | Generates the Prisma client.                                                  |
+| `npm run db:migrate`                                 | Creates/applies Prisma migrations (dev).                                      |
+| `npm run db:seed`                                    | Seeds the database (safe to replay).                                          |
+| `npm run db:studio`                                  | Opens Prisma Studio.                                                          |
+| `npm run docker:dev` / `:down` / `:reset`            | Starts/stops/resets the dev stack.                                            |
+| `npm run docker:prod` / `:down`                      | **Not implemented yet** (future sprint).                                      |
+| `./scripts/import-dat.sh` / `scripts\import-dat.ps1` | Imports the `dataset/dat/` catalogs not imported yet (`-F` forces replacing). |
 
 ## Repository structure
 
@@ -163,16 +211,20 @@ docs/
 dataset/
   dat/                      No-Intro .dat catalogs (versioned)
   roms/                     (legally) acquired ROMs for testing directory scans
+scripts/                    One-click helpers (import-dat.sh / import-dat.ps1)
 prompts/                    Versioned prompts consumed by the backend
 ```
 
 ## Dataset
 
-`dataset/dat/` holds six real **No-Intro `.dat` catalogs (Logiqx XML)** (Game
-Boy, Game Boy Color, Game Boy Advance, NES, SNES, Mega Drive) used to identify
-ROMs by **SHA-1, MD5 or normalized name**. Follow the
+`dataset/dat/` holds seven real **No-Intro `.dat` catalogs (Logiqx XML)** (Game
+Boy, Game Boy Color, Game Boy Advance, NES headered and headerless, SNES, Mega
+Drive) used to identify ROMs by **SHA-1, MD5 or normalized name**. Import them
+with `scripts/import-dat.sh` or `scripts/import-dat.ps1` (see
+[Getting started](#import-the-dat-catalogs)). Follow the
 [DAT-o-MATIC configuration](./CONTRIBUTING.md#dat-o-matic-configuration) before
-adding or replacing one.
+adding or replacing one (a replacement needs the `--force` option of the
+scripts).
 
 `dataset/roms/` holds **real ROMs**, one folder per platform, for exercising the
 directory scanner; `broken/` and `duplicates/` sub-folders hold the empty,

@@ -2,13 +2,17 @@
 
 # 🕹️ ROM RAG (Retrieval-Augmented Generation)
 
+[![CI](https://github.com/Novachocolat/rom-rag-sae-but3/actions/workflows/docs-deploy.yml/badge.svg)](https://github.com/Novachocolat/rom-rag-sae-but3/actions/workflows/docs-deploy.yml)
+[![CI](https://github.com/Novachocolat/rom-rag-sae-but3/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/Novachocolat/rom-rag-sae-but3/actions/workflows/pr-checks.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A **video game ROM (Read-Only Memory) library manager 🕹️**: it searches through
 a local directory, identifies ROM files (Game Boy `.gb`, Game Boy Color `.gbc`,
 Game Boy Advance `.gba`, NES `.nes`, SNES `.sfc/.smc`, Mega Drive
 `.md/.bin/.gen`) against
 **[No-Intro Datomatic](https://datomatic.no-intro.org/index.php?page=download&s=64)**
 databases, and enriches **unidentified ROMs** and **groups a game's variants**
-together using **local AI pre-trained models (from Ollama)**.
+together using **AI pre-trained models (from Ollama)**.
 
 > **See [docs/CHANGELOG.md](./docs/CHANGELOG.md) to be up-to-date.**
 
@@ -24,6 +28,7 @@ together using **local AI pre-trained models (from Ollama)**.
 - [Dataset](#dataset)
 - [Quality and CI](#quality-and-ci)
 - [Documentation](#documentation)
+- [License](#license)
 - [Versioning](#versioning)
 
 ## Team
@@ -64,15 +69,15 @@ together using **local AI pre-trained models (from Ollama)**.
 
 ## Stack
 
-| Layer         | Technologies                                                                     |
-| ------------- | -------------------------------------------------------------------------------- |
-| **Frontend**  | React 19, TanStack Query, Redux Toolkit, TailwindCSS 4, shadcn/ui                |
-| **Backend**   | Node.js, Express 5, Zod, Helmet, CORS                                            |
-| **Databases** | PostgreSQL 17 + pgvector, Redis 8 (ioredis), Prisma 7                            |
-| **AI models** | Ollama with a local LLM (`gemma4:26b`) and an embedding model (`embeddinggemma`) |
-| **User docs** | Astro Starlight (`docs/user`)                                                    |
-| **Quality**   | TypeScript strict, Oxlint, Prettier, Vitest, Husky, commitlint                   |
-| **Tooling**   | npm workspaces, Docker / Docker Compose, GitHub Actions                          |
+| Layer         | Technologies                                                               |
+| ------------- | -------------------------------------------------------------------------- |
+| **Frontend**  | React 19, TanStack Query, Redux Toolkit, TailwindCSS 4, shadcn/ui          |
+| **Backend**   | Node.js, Express 5, Zod, Helmet, CORS                                      |
+| **Databases** | PostgreSQL 17 + pgvector, Redis 8 (ioredis), Prisma 7                      |
+| **AI models** | Ollama with a LLM (`gemma4:26b`) and an embedding model (`embeddinggemma`) |
+| **User docs** | Astro Starlight (`docs/user`)                                              |
+| **Quality**   | TypeScript strict, Oxlint, Prettier, Vitest, Husky, commitlint             |
+| **Tooling**   | npm workspaces, Docker / Docker Compose, GitHub Actions                    |
 
 > The TypeScript/React stack (instead of a Python/Gradio stack) was approved by
 > @rzct, the supervisor of the project.
@@ -266,6 +271,25 @@ touching `docs/user/`.
 
 > **All documentation was supervised and reviewed by Claude to ensure team's
 > productivity and comprehension.**
+
+## License
+
+The source code and documentation written for this project are released under
+the [MIT License](./LICENSE). This license does **not** cover:
+
+- **ROMs:** this license grants no rights over any game. Only use dumps you are
+  legally allowed to hold.
+- **No-Intro `.dat` catalogs** (`dataset/dat/`): they come from the
+  [No-Intro](https://datomatic.no-intro.org/) project and keep its terms.
+- **AI models** (`gemma4:26b`, `embeddinggemma`): they are not part of this
+  repository. Ollama serves them through its HTTP API, from a separate server,
+  and each model keeps its own license.
+- **Third-party dependencies:** each package keeps its own license.
+
+**Nintendo**, **Sega** and all game titles are trademarks of their respective
+owners. **This is a student project, not affiliated with or endorsed by them.**
+
+> **This public repository will be made private once the evaluation is done.**
 
 ## Versioning
 

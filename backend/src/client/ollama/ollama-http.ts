@@ -41,13 +41,13 @@ function classifyHttpError(
   status: number,
   bodyText: string,
   path: string,
+  model: string,
 ): OllamaError {
   if (status === 404 && /model .*not found/i.test(bodyText)) {
-    return new OllamaModelNotFoundError('Ollama model is not available', {
-      path,
-      status,
-      body: bodyText,
-    })
+    return new OllamaModelNotFoundError(
+      `Ollama model "${model}" is not available (try: ollama pull ${model})`,
+      { path, status, model, body: bodyText },
+    )
   }
 
   if (/context length|out of memory/i.test(bodyText)) {
@@ -113,7 +113,7 @@ async function performRequest<T>(
   const bodyText = await response.text()
 
   if (!response.ok) {
-    throw classifyHttpError(response.status, bodyText, path)
+    throw classifyHttpError(response.status, bodyText, path, options.model)
   }
 
   logger.info('Ollama call succeeded', {

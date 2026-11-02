@@ -1,11 +1,15 @@
 import { z } from 'zod'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { env } from '../../env.js'
+import { logger } from '../../lib/logger.js'
 import { ollamaRequest } from './ollama-http.js'
 import { ollamaLlmClient } from './ollama-llm.client.js'
 import { OllamaInvalidJsonError } from './ollama.error.js'
 
 vi.mock('./ollama-http.js', () => ({ ollamaRequest: vi.fn() }))
+vi.mock('../../lib/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
 
 const mockedRequest = vi.mocked(ollamaRequest)
 
@@ -117,6 +121,31 @@ describe('ollamaLlmClient', () => {
       ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
     })
 
+    it('keeps the raw output in the error details and logs it when `response` is not valid JSON', async () => {
+      mockedRequest.mockResolvedValue(
+        fakeOllamaResponse({ response: 'definitely not json' }),
+      )
+
+      await expect(
+        ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
+      ).rejects.toMatchObject({ details: { raw: 'definitely not json' } })
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          raw: 'definitely not json',
+          model: env.OLLAMA_LLM_MODEL,
+        }),
+      )
+    })
+
+    it('treats an empty `response` as invalid JSON', async () => {
+      mockedRequest.mockResolvedValue(fakeOllamaResponse({ response: '' }))
+
+      await expect(
+        ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
+      ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
+    })
+
     it('throws OllamaInvalidJsonError when the JSON does not match the schema', async () => {
       mockedRequest.mockResolvedValue(
         fakeOllamaResponse({ response: JSON.stringify({ wrongField: 1 }) }),
@@ -125,6 +154,10 @@ describe('ollamaLlmClient', () => {
       await expect(
         ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
       ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ raw: '{"wrongField":1}' }),
+      )
     })
 
     it('guards against a zero eval_duration instead of dividing by zero', async () => {

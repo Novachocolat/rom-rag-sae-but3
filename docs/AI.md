@@ -49,6 +49,38 @@ written into the ROM: it waits in a review queue until a user accepts it.
 When Ollama is unreachable, the single-ROM route answers
 `503 OLLAMA_UNAVAILABLE` and the batch stops early.
 
+## Metrics
+
+Every LLM call (`generateJson` and `generateText`) is measured: its duration,
+rounded to whole milliseconds, and its speed in tokens per second. A failed call
+is counted by error code instead. Each identification cache lookup counts as a
+hit or a miss. These writes are best effort: a Redis failure is logged and never
+fails the inference it measures.
+
+Each proposal exposes the cost of its own answer in `inference`:
+`{ durationMs, tokensPerSecond, fromCache }`. On a cache hit, these are the
+metrics of the original call. They are `null` on proposals saved before metrics
+existed.
+
+| Redis key                   | Type    | Content                                      |
+| --------------------------- | ------- | -------------------------------------------- |
+| `metrics:inferences`        | hash    | model → number of successful inferences      |
+| `metrics:durations:<model>` | list    | latest 1,000 durations (ms), newest first    |
+| `metrics:tps:<model>`       | list    | latest 1,000 speeds (tokens/s), newest first |
+| `metrics:errors`            | hash    | error code → count                           |
+| `metrics:cache:hits`        | counter | identification cache hits                    |
+| `metrics:cache:misses`      | counter | identification cache misses                  |
+
+| Method | Path           | Behaviour                                                                                                             |
+| ------ | -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/metrics` | AI configuration, per-model inference count, average and p95 duration, average speed, cache hit rate, errors, vectors |
+
+The inference, cache and error stats are **global**: every user shares the same
+Ollama instance and the same AI cache, whose keys hold no user id. Only
+`index.vectors` is scoped to the authenticated user's library. Counters cover
+everything since Redis was last emptied, while averages and p95 cover the latest
+1,000 samples per model.
+
 ## Interface
 
 - The header status follows `GET /api/health`, polled every 10 seconds and on

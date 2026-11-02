@@ -95,6 +95,14 @@ describe('getCachedIdentification', () => {
     )
     expect(await getCachedIdentification('k')).toBeNull()
   })
+
+  it('treats an entry with an unrounded duration as a miss', async () => {
+    vi.mocked(redis.get).mockResolvedValue(
+      JSON.stringify({ ...entry, durationMs: 1234.5 }),
+    )
+
+    expect(await getCachedIdentification('k')).toBeNull()
+  })
 })
 
 describe('setCachedIdentification', () => {

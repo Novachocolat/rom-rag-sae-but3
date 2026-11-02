@@ -2,13 +2,17 @@
 
 # 🕹️ ROM RAG (Retrieval-Augmented Generation)
 
+[![CI](https://github.com/Novachocolat/rom-rag-sae-but3/actions/workflows/docs-deploy.yml/badge.svg)](https://github.com/Novachocolat/rom-rag-sae-but3/actions/workflows/docs-deploy.yml)
+[![CI](https://github.com/Novachocolat/rom-rag-sae-but3/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/Novachocolat/rom-rag-sae-but3/actions/workflows/pr-checks.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A **video game ROM (Read-Only Memory) library manager 🕹️**: it searches through
 a local directory, identifies ROM files (Game Boy `.gb`, Game Boy Color `.gbc`,
 Game Boy Advance `.gba`, NES `.nes`, SNES `.sfc/.smc`, Mega Drive
 `.md/.bin/.gen`) against
 **[No-Intro Datomatic](https://datomatic.no-intro.org/index.php?page=download&s=64)**
 databases, and enriches **unidentified ROMs** and **groups a game's variants**
-together using **local AI pre-trained models (from Ollama)**.
+together using **AI pre-trained models (from Ollama)**.
 
 > **See [docs/CHANGELOG.md](./docs/CHANGELOG.md) to be up-to-date.**
 
@@ -24,6 +28,7 @@ together using **local AI pre-trained models (from Ollama)**.
 - [Dataset](#dataset)
 - [Quality and CI](#quality-and-ci)
 - [Documentation](#documentation)
+- [License](#license)
 - [Versioning](#versioning)
 
 ## Team
@@ -64,15 +69,15 @@ together using **local AI pre-trained models (from Ollama)**.
 
 ## Stack
 
-| Layer         | Technologies                                                                     |
-| ------------- | -------------------------------------------------------------------------------- |
-| **Frontend**  | React 19, TanStack Query, Redux Toolkit, TailwindCSS 4, shadcn/ui                |
-| **Backend**   | Node.js, Express 5, Zod, Helmet, CORS                                            |
-| **Databases** | PostgreSQL 17 + pgvector, Redis 8 (ioredis), Prisma 7                            |
-| **AI models** | Ollama with a local LLM (`gemma4:26b`) and an embedding model (`embeddinggemma`) |
-| **User docs** | Astro Starlight (`docs/user`)                                                    |
-| **Quality**   | TypeScript strict, Oxlint, Prettier, Vitest, Husky, commitlint                   |
-| **Tooling**   | npm workspaces, Docker / Docker Compose, GitHub Actions                          |
+| Layer         | Technologies                                                               |
+| ------------- | -------------------------------------------------------------------------- |
+| **Frontend**  | React 19, TanStack Query, Redux Toolkit, TailwindCSS 4, shadcn/ui          |
+| **Backend**   | Node.js, Express 5, Zod, Helmet, CORS                                      |
+| **Databases** | PostgreSQL 17 + pgvector, Redis 8 (ioredis), Prisma 7                      |
+| **AI models** | Ollama with a LLM (`gemma4:26b`) and an embedding model (`embeddinggemma`) |
+| **User docs** | Astro Starlight (`docs/user`)                                              |
+| **Quality**   | TypeScript strict, Oxlint, Prettier, Vitest, Husky, commitlint             |
+| **Tooling**   | npm workspaces, Docker / Docker Compose, GitHub Actions                    |
 
 > The TypeScript/React stack (instead of a Python/Gradio stack) was approved by
 > @rzct, the supervisor of the project.
@@ -118,23 +123,71 @@ reported to a future sprint. Use `npm run docker:dev` until then; there will be
 no **Nginx/reverse-proxy layer**, since this project is never hosted publicly
 (see [CONVENTIONS.md](./CONVENTIONS.md#infrastructure)).
 
+### Import the DAT catalogs
+
+The database starts empty: ROMs can only be identified once the No-Intro
+catalogs of `dataset/dat/` are imported. With the Docker stack running, run
+**one** of these scripts from the repository root:
+
+```bash
+./scripts/import-dat.sh                                      # Linux, macOS, Git Bash
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1   # Windows
+```
+
+The script checks that Docker is running and that the backend answers, then
+imports every `.dat` file not imported yet (safe to replay). On Windows, you can
+also right-click `scripts/import-dat.ps1` > **Run with PowerShell**.
+
+**Replacing a catalog.** By default, a `.dat` file whose name is already
+imported is skipped, and so is a file whose content is already imported under
+another name. To replace the catalogs already imported under the same file name
+(for example an updated version of a `.dat`), add `-F` / `--force` (`-F` /
+`-Force` for the PowerShell script):
+
+```bash
+./scripts/import-dat.sh --force
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1 -Force
+```
+
+Each existing catalog is deleted with its entries, then the file is imported
+again. Two limits to know:
+
+- A catalog that scanned ROMs are already matched against cannot be deleted
+  (HTTP 409): the script reports it and leaves it untouched.
+- If the import fails after the deletion, the previous catalog is gone: fix the
+  file, then run the script again (without the option) to import it.
+
+**Another backend.** To import into a backend that does not run in this Docker
+stack (remote, or `npm run dev` with only PostgreSQL in Docker), set `API_URL`
+to its API, for example
+`API_URL=http://localhost:3000/api ./scripts/import-dat.sh` (PowerShell:
+`-ApiUrl` or `$env:API_URL`). The Docker checks are then skipped, only the
+backend `/health` answer is required.
+
 ## Scripts
 
-| Command                                   | Effect                                                       |
-| ----------------------------------------- | ------------------------------------------------------------ |
-| `npm run dev`                             | Runs `shared`, `backend`, `frontend` and `docs` in parallel. |
-| `npm run build`                           | Builds every workspace.                                      |
-| `npm run build:shared`                    | Builds `shared/` only.                                       |
-| `npm test`                                | Runs Vitest across all workspaces.                           |
-| `npm run lint` / `lint:fix`               | Oxlint, with or without autofix.                             |
-| `npm run format` / `format:check`         | Prettier, write or check-only.                               |
-| `npm run ts:check`                        | Type-checks the three `tsconfig` projects.                   |
-| `npm run db:generate`                     | Generates the Prisma client.                                 |
-| `npm run db:migrate`                      | Creates/applies Prisma migrations (dev).                     |
-| `npm run db:seed`                         | Seeds the database (safe to replay).                         |
-| `npm run db:studio`                       | Opens Prisma Studio.                                         |
-| `npm run docker:dev` / `:down` / `:reset` | Starts/stops/resets the dev stack.                           |
-| `npm run docker:prod` / `:down`           | **Not implemented yet** (future sprint).                     |
+| Command                                              | Effect                                                                        |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run dev`                                        | Runs `shared`, `backend`, `frontend` and `docs` in parallel.                  |
+| `npm run build`                                      | Builds every workspace.                                                       |
+| `npm run build:shared`                               | Builds `shared/` only.                                                        |
+| `npm test`                                           | Runs Vitest across all workspaces.                                            |
+| `npm run lint` / `lint:fix`                          | Oxlint, with or without autofix.                                              |
+| `npm run format` / `format:check`                    | Prettier, write or check-only.                                                |
+| `npm run ts:check`                                   | Type-checks the three `tsconfig` projects.                                    |
+| `npm run db:generate`                                | Generates the Prisma client.                                                  |
+| `npm run db:migrate`                                 | Creates/applies Prisma migrations (dev).                                      |
+| `npm run db:seed`                                    | Seeds the database (safe to replay).                                          |
+| `npm run db:studio`                                  | Opens Prisma Studio.                                                          |
+| `npm run docker:dev` / `:down` / `:reset`            | Starts/stops/resets the dev stack.                                            |
+| `npm run docker:prod` / `:down`                      | **Not implemented yet** (future sprint).                                      |
+| `./scripts/import-dat.sh` / `scripts\import-dat.ps1` | Imports the `dataset/dat/` catalogs not imported yet (`-F` forces replacing). |
 
 ## Repository structure
 
@@ -163,16 +216,20 @@ docs/
 dataset/
   dat/                      No-Intro .dat catalogs (versioned)
   roms/                     (legally) acquired ROMs for testing directory scans
+scripts/                    One-click helpers (import-dat.sh / import-dat.ps1)
 prompts/                    Versioned prompts consumed by the backend
 ```
 
 ## Dataset
 
-`dataset/dat/` holds six real **No-Intro `.dat` catalogs (Logiqx XML)** (Game
-Boy, Game Boy Color, Game Boy Advance, NES, SNES, Mega Drive) used to identify
-ROMs by **SHA-1, MD5 or normalized name**. Follow the
+`dataset/dat/` holds seven real **No-Intro `.dat` catalogs (Logiqx XML)** (Game
+Boy, Game Boy Color, Game Boy Advance, NES headered and headerless, SNES, Mega
+Drive) used to identify ROMs by **SHA-1, MD5 or normalized name**. Import them
+with `scripts/import-dat.sh` or `scripts/import-dat.ps1` (see
+[Getting started](#import-the-dat-catalogs)). Follow the
 [DAT-o-MATIC configuration](./CONTRIBUTING.md#dat-o-matic-configuration) before
-adding or replacing one.
+adding or replacing one (a replacement needs the `--force` option of the
+scripts).
 
 `dataset/roms/` holds **real ROMs**, one folder per platform, for exercising the
 directory scanner; `broken/` and `duplicates/` sub-folders hold the empty,
@@ -206,7 +263,7 @@ touching `docs/user/`.
 | [docs/CHANGELOG.md](./docs/CHANGELOG.md)       | Version history.                                                            |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layers and data flow.                                                       |
 | [docs/DATA_MODEL.md](./docs/DATA_MODEL.md)     | Relational and vector schema.                                               |
-| [docs/AI.md](./docs/AI.md)                     | Models, prompts, output schemas, robustness.                                |
+| [docs/AI.md](./docs/AI.md)                     | Models, prompts, output schemas, robustness, metrics (`GET /api/metrics`).  |
 | [docs/SECURITY.md](./docs/SECURITY.md)         | Security and data-integrity measures.                                       |
 | [docs/adr/](./docs/adr/)                       | Architecture Decision Records.                                              |
 | [docs/monitoring/](./docs/monitoring/)         | Sprints and User Stories.                                                   |
@@ -214,6 +271,25 @@ touching `docs/user/`.
 
 > **All documentation was supervised and reviewed by Claude to ensure team's
 > productivity and comprehension.**
+
+## License
+
+The source code and documentation written for this project are released under
+the [MIT License](./LICENSE). This license does **not** cover:
+
+- **ROMs:** this license grants no rights over any game. Only use dumps you are
+  legally allowed to hold.
+- **No-Intro `.dat` catalogs** (`dataset/dat/`): they come from the
+  [No-Intro](https://datomatic.no-intro.org/) project and keep its terms.
+- **AI models** (`gemma4:26b`, `embeddinggemma`): they are not part of this
+  repository. Ollama serves them through its HTTP API, from a separate server,
+  and each model keeps its own license.
+- **Third-party dependencies:** each package keeps its own license.
+
+**Nintendo**, **Sega** and all game titles are trademarks of their respective
+owners. **This is a student project, not affiliated with or endorsed by them.**
+
+> **This public repository will be made private once the evaluation is done.**
 
 ## Versioning
 

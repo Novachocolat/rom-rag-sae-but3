@@ -22,6 +22,7 @@ import {
   TableRow,
 } from '@/app/components/ui/table'
 import { cn } from '@/lib/utils'
+import { InferenceMeta } from '@/app/components/ai/InferenceMeta'
 
 interface CollectionProposalCardProps {
   proposal: CollectionProposal
@@ -199,13 +200,17 @@ export function CollectionProposalCard({
           </details>
         )}
 
-        <p className="text-xs text-muted-foreground">
-          Model <code>{proposal.model}</code> · prompt{' '}
-          <code>
-            {proposal.promptName}@{proposal.promptVersion}
-          </code>{' '}
-          · {new Date(proposal.createdAt).toLocaleString()}
-        </p>
+        <div className="space-y-1">
+          <InferenceMeta
+            model={proposal.model}
+            promptName={proposal.promptName}
+            promptVersion={proposal.promptVersion}
+            inference={proposal.inference}
+          />
+          <p className="text-xs text-muted-foreground">
+            {new Date(proposal.createdAt).toLocaleString()}
+          </p>
+        </div>
       </CardContent>
     </Card>
   )

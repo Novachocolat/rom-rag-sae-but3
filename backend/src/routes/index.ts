@@ -7,6 +7,7 @@ import { datRouter } from './dat.routes.js'
 import { romRouter } from './rom.routes.js'
 import { aiRouter } from './ai.routes.js'
 import { collectionRouter } from './collection.routes.js'
+import { metricsRouter } from './metrics.routes.js'
 
 // Barrel file to exports all routes
 export const rootRouter = Router()
@@ -61,3 +62,7 @@ rootRouter.use(aiRouter)
  * DELETE /collections/:id
  */
 rootRouter.use(collectionRouter)
+/**
+ * GET /metrics
+ */
+rootRouter.use(metricsRouter)

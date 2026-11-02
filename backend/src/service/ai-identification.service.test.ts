@@ -24,6 +24,7 @@ import {
   listPlatforms,
 } from '../storage/dat.storage.js'
 import { findRomById, listUnidentifiedRomIds } from '../storage/rom.storage.js'
+import { recordCacheLookup } from '../storage/metrics.storage.js'
 import {
   buildPromptVariables,
   checkCoherence,
@@ -36,6 +37,7 @@ import {
   proposeIdentification,
   reviewProposal,
   statusFor,
+  withCacheMetrics,
   type IdentificationPorts,
   type PlatformInfo,
   type RomForIdentification,
@@ -73,6 +75,9 @@ vi.mock('../storage/dat.storage.js', () => ({
 vi.mock('../storage/rom.storage.js', () => ({
   findRomById: vi.fn(),
   listUnidentifiedRomIds: vi.fn(),
+}))
+vi.mock('../storage/metrics.storage.js', () => ({
+  recordCacheLookup: vi.fn(),
 }))
 
 const YEAR = 2026
@@ -447,6 +452,36 @@ describe('proposeIdentification', () => {
     const outcome = await proposeIdentification(rom, ports)
 
     expect(outcome.decision).toBe('LOW_CONFIDENCE')
+  })
+})
+
+describe('withCacheMetrics', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('counts a hit and answers the cached entry', async () => {
+    const cached = { durationMs: 1 } as CachedIdentification
+    const get = withCacheMetrics(vi.fn().mockResolvedValue(cached))
+
+    expect(await get('key')).toBe(cached)
+    expect(recordCacheLookup).toHaveBeenCalledWith(true)
+  })
+
+  it('counts a miss and answers null', async () => {
+    const get = withCacheMetrics(vi.fn().mockResolvedValue(null))
+
+    expect(await get('key')).toBeNull()
+    expect(recordCacheLookup).toHaveBeenCalledWith(false)
+  })
+
+  it('counts nothing when the cache itself fails', async () => {
+    const get = withCacheMetrics(
+      vi.fn().mockRejectedValue(new Error('redis down')),
+    )
+
+    await expect(get('key')).rejects.toThrow('redis down')
+    expect(recordCacheLookup).not.toHaveBeenCalled()
   })
 })
 

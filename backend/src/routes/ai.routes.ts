@@ -40,15 +40,25 @@ interface ProposalRow {
   model: string
   promptName: string
   promptVersion: string
+  durationMs: number | null
   createdAt: Date
   reviewedAt: Date | null
   rom: { fileName: string } | null
 }
 
+// What the identification prompt stored with its proposal
+// The metrics are optional: rows saved before they were recorded lack them
+const identificationPayloadSchema = z.object({
+  identification: romIdentificationSchema,
+  issues: z.array(z.string()),
+  tokensPerSecond: z.number().optional(),
+  fromCache: z.boolean().optional(),
+})
+
 // Converts a stored proposal to the API shape. The payload is ours, but it is
 // parsed anyway so a malformed row cannot leak an untyped object to the client.
 function toAiProposal(row: ProposalRow): AiProposal {
-  const payload = row.payload as { identification: unknown; issues: string[] }
+  const payload = identificationPayloadSchema.parse(row.payload)
 
   return {
     id: row.id,
@@ -57,11 +67,17 @@ function toAiProposal(row: ProposalRow): AiProposal {
     status: row.status,
     source: 'AI_PROPOSED',
     confidence: row.confidence,
-    identification: romIdentificationSchema.parse(payload.identification),
+    identification: payload.identification,
     issues: payload.issues,
     model: row.model,
     promptName: row.promptName,
     promptVersion: row.promptVersion,
+    // `durationMs` is a column of the row, the other metrics live in its payload
+    inference: {
+      durationMs: row.durationMs,
+      tokensPerSecond: payload.tokensPerSecond ?? null,
+      fromCache: payload.fromCache ?? null,
+    },
     createdAt: row.createdAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
   }

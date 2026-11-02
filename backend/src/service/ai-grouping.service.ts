@@ -6,13 +6,13 @@ import { ollamaLlmClient } from '../client/ollama/ollama-llm.client.js'
 import { loadPrompts, renderPrompt } from './prompt-loader.service.js'
 import { normalizeTitle } from './title-normalizer.service.js'
 
-/** Name and version of the prompt file used for grouping (`prompts/<name>.<version>.md`). */
+// Name and version of the prompt file used for grouping (`prompts/<name>.<version>.md`)
 export const GROUPING_PROMPT = { name: 'grouping', version: 'v1' }
 
 // A bigger cluster would overflow the model's context window
 export const MAX_ROMS_PER_CALL = 15
 
-/** What the model is told about one ROM of a cluster. */
+// What the model is told about one ROM of a cluster
 export interface ClusterRom {
   id: string
   fileName: string
@@ -52,6 +52,7 @@ export interface GroupingOutcome {
   raw: string
   model: string
   durationMs: number
+  tokensPerSecond: number
   promptTokens: number
   completionTokens: number
 }
@@ -185,6 +186,7 @@ export async function proposeGrouping(
     raw: fresh.raw,
     model: fresh.model,
     durationMs: fresh.durationMs,
+    tokensPerSecond: fresh.tokensPerSecond,
     promptTokens: fresh.promptTokens,
     completionTokens: fresh.completionTokens,
   }

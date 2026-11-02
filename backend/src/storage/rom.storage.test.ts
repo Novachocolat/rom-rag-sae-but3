@@ -105,7 +105,7 @@ describe('rom.storage', () => {
       where,
       skip: 10,
       take: 10,
-      orderBy: { fileName: 'asc' },
+      orderBy: [{ fileName: 'asc' }, { id: 'asc' }],
       include: { platform: true },
     })
     expect(count).toHaveBeenCalledWith({ where })

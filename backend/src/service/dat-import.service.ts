@@ -17,8 +17,8 @@ import {
   type DatEntryInput,
 } from '../storage/dat.storage.js'
 
-// Resolves to the dataset directory
-const DAT_DATASET_DIR = path.resolve(process.cwd(), '../dataset/dat')
+// Resolves to the dataset directory; must be exported so that the seed script can access it
+export const DAT_DATASET_DIR = path.resolve(process.cwd(), '../dataset/dat')
 
 // Slugs do not always match their platform names, so a mapping is necessary here
 const HEADER_NAME_TO_SLUG: Record<string, string> = {

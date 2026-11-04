@@ -53,10 +53,12 @@ export async function upsertEmbedding(
 
 /**
  * Nearest neighbours of a ROM among the same owner's ROMs, closest first.
- * Returns an empty list when the ROM has no vector yet.
+ * Returns an empty list when the ROM has no vector of the configured model yet.
  * The owner filter makes the planner scan that owner's vectors and sort them
  * (exact, EXPLAIN-checked) instead of walking the HNSW index, which would cap
  * the candidates across all users before filtering.
+ * Vectors of another model are never compared: after a model switch they are
+ * absent until re-embedded (ADR-010).
  */
 export async function findNearest(
   romId: string,
@@ -64,19 +66,21 @@ export async function findNearest(
   minSimilarity: number,
 ): Promise<NearestRom[]> {
   const maxDistance = 1 - minSimilarity
+  const model = env.OLLAMA_EMBEDDING_MODEL
 
   return prisma.$queryRaw<NearestRom[]>(Prisma.sql`
     SELECT
       r."id" AS "romId",
       r."fileName" AS "fileName",
       r."title" AS "title",
-      1 - (e."embedding" <=> (SELECT "embedding" FROM "RomEmbedding" WHERE "romId" = ${romId})) AS "similarity"
+      1 - (e."embedding" <=> (SELECT "embedding" FROM "RomEmbedding" WHERE "romId" = ${romId} AND "model" = ${model})) AS "similarity"
     FROM "RomEmbedding" e
     JOIN "Rom" r ON r."id" = e."romId"
     WHERE e."romId" <> ${romId}
+      AND e."model" = ${model}
       AND r."userId" = (SELECT "userId" FROM "Rom" WHERE "id" = ${romId})
-      AND (e."embedding" <=> (SELECT "embedding" FROM "RomEmbedding" WHERE "romId" = ${romId})) <= ${maxDistance}
-    ORDER BY e."embedding" <=> (SELECT "embedding" FROM "RomEmbedding" WHERE "romId" = ${romId})
+      AND (e."embedding" <=> (SELECT "embedding" FROM "RomEmbedding" WHERE "romId" = ${romId} AND "model" = ${model})) <= ${maxDistance}
+    ORDER BY e."embedding" <=> (SELECT "embedding" FROM "RomEmbedding" WHERE "romId" = ${romId} AND "model" = ${model})
     LIMIT ${k}
   `)
 }
@@ -148,4 +152,44 @@ export async function assertHnswIndexPresent(): Promise<void> {
       { index: HNSW_INDEX_NAME },
     )
   }
+}
+
+/**
+ * Nearest ROMs of a user to a query vector, closest first.
+ * `romIds`, when given, restricts the candidates before the ranking, so a
+ * filter never loses a match ranked beyond `k` among all the user's ROMs.
+ * Same concern as findNearest: walking the HNSW index would cap the
+ * candidates before the filters apply. A literal query vector lets the planner
+ * pick that index, so the MATERIALIZED CTE forces the exact per-owner scan.
+ * Only vectors of the configured model are compared; a ROM without one is
+ * absent. No similarity threshold on purpose (ADR-010): the raw cosine score
+ * is returned and the caller decides what to show; only `k` bounds the result.
+ */
+export async function findNearestToVector(
+  userId: string,
+  vector: number[],
+  k: number,
+  romIds?: string[],
+): Promise<NearestRom[]> {
+  const literal = toVectorLiteral(vector)
+  if (romIds?.length === 0) return []
+
+  return prisma.$queryRaw<NearestRom[]>(Prisma.sql`
+    WITH candidates AS MATERIALIZED (
+      SELECT
+        r."id" AS "romId",
+        r."fileName" AS "fileName",
+        r."title" AS "title",
+        e."embedding" <=> ${literal}::vector AS "distance"
+      FROM "RomEmbedding" e
+      JOIN "Rom" r ON r."id" = e."romId"
+      WHERE r."userId" = ${userId}
+        AND e."model" = ${env.OLLAMA_EMBEDDING_MODEL}
+        ${romIds ? Prisma.sql`AND r."id" = ANY(${romIds}::text[])` : Prisma.empty}
+    )
+    SELECT "romId", "fileName", "title", 1 - "distance" AS "similarity"
+    FROM candidates
+    ORDER BY "distance", "romId"
+    LIMIT ${k}
+  `)
 }

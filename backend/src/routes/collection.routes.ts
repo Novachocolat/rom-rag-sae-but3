@@ -91,6 +91,8 @@ const runningDetections = new Set<string>()
 const groupingPayloadSchema = z.object({
   reasoning: z.string(),
   issues: z.array(z.string()),
+  tokensPerSecond: z.number().optional(),
+  fromCache: z.boolean().optional(),
 })
 
 /**
@@ -131,6 +133,9 @@ async function recordOutcome(
       removedRomIds: outcome.removedRomIds,
       reasoning: outcome.reasoning,
       issues: outcome.issues,
+      tokensPerSecond: outcome.tokensPerSecond,
+      // Grouping answers are never cached
+      fromCache: false,
     },
     rawResponse: outcome.raw,
     model: outcome.model,
@@ -310,6 +315,11 @@ async function toCollectionProposal(
     model: proposal.model,
     promptName: proposal.promptName,
     promptVersion: proposal.promptVersion,
+    inference: {
+      durationMs: proposal.durationMs,
+      tokensPerSecond: payload.tokensPerSecond ?? null,
+      fromCache: payload.fromCache ?? null,
+    },
     createdAt: proposal.createdAt.toISOString(),
     collection: await toCollectionDetail(userId, collectionId),
   }

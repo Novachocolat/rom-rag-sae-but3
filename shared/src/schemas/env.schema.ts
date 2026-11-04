@@ -34,6 +34,9 @@ export const envSchema = z.object({
   AI_CACHE_TTL_SECONDS: z.coerce.number().int(),
   AI_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1),
 
+  // Demo
+  DEMO_USER_PASSWORD: z.string().min(12),
+
   // Ports
   POSTGRES_PORT: z.coerce.number().int(),
   FRONTEND_PORT: z.coerce.number().int(),

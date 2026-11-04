@@ -36,6 +36,13 @@ export const proposalReviewSchema = z
     path: ['corrections'],
   })
 
+// What producing a proposal cost; null on rows saved before it was recorded
+export const inferenceStatsSchema = z.object({
+  durationMs: z.number().nullable(),
+  tokensPerSecond: z.number().nullable(),
+  fromCache: z.boolean().nullable(),
+})
+
 // A proposal as the review queue shows it. `source` is the label the UI
 // displays: a proposal is never a confirmed identification.
 export const aiProposalSchema = z.object({
@@ -50,6 +57,7 @@ export const aiProposalSchema = z.object({
   model: z.string(),
   promptName: z.string(),
   promptVersion: z.string(),
+  inference: inferenceStatsSchema,
   createdAt: z.iso.datetime(),
   reviewedAt: z.iso.datetime().nullable(), // Null until a user reviews it
 })

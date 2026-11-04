@@ -29,6 +29,7 @@ export default defineConfig({
       SESSION_TTL_SECONDS: '604800',
       AI_CACHE_TTL_SECONDS: '86400',
       AI_CONFIDENCE_THRESHOLD: '0.75',
+      DEMO_USER_PASSWORD: 'DemoPassword1234',
       POSTGRES_PORT: '5433',
       FRONTEND_PORT: '5173',
       DOCS_USER_PORT: '4321',

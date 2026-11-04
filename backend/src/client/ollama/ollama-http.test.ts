@@ -100,6 +100,19 @@ describe('ollamaRequest', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
+  it('names the missing model in the error message and details', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      fakeResponse(404, JSON.stringify({ error: 'model "x" not found' })),
+    )
+
+    await expect(
+      ollamaRequest('/api/generate', { model: 'x' }),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('"x"'),
+      details: expect.objectContaining({ model: 'x' }),
+    })
+  })
+
   it('throws OllamaContextOverflowError when the body mentions the context length, without retrying', async () => {
     vi.mocked(fetch).mockResolvedValue(
       fakeResponse(

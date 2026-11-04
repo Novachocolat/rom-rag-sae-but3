@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { env } from '../../env.js'
+import { logger } from '../../lib/logger.js'
 import { ollamaRequest } from './ollama-http.js'
 import { ollamaLlmClient } from './ollama-llm.client.js'
 import { OllamaInvalidJsonError } from './ollama.error.js'
@@ -8,6 +9,9 @@ import { AppError } from '../../lib/error.js'
 import { recordError, recordInference } from '../../storage/metrics.storage.js'
 
 vi.mock('./ollama-http.js', () => ({ ollamaRequest: vi.fn() }))
+vi.mock('../../lib/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
 vi.mock('../../storage/metrics.storage.js', () => ({
   recordInference: vi.fn(),
   recordError: vi.fn(),
@@ -123,6 +127,31 @@ describe('ollamaLlmClient', () => {
       ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
     })
 
+    it('keeps the raw output in the error details and logs it when `response` is not valid JSON', async () => {
+      mockedRequest.mockResolvedValue(
+        fakeOllamaResponse({ response: 'definitely not json' }),
+      )
+
+      await expect(
+        ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
+      ).rejects.toMatchObject({ details: { raw: 'definitely not json' } })
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          raw: 'definitely not json',
+          model: env.OLLAMA_LLM_MODEL,
+        }),
+      )
+    })
+
+    it('treats an empty `response` as invalid JSON', async () => {
+      mockedRequest.mockResolvedValue(fakeOllamaResponse({ response: '' }))
+
+      await expect(
+        ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
+      ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
+    })
+
     it('throws OllamaInvalidJsonError when the JSON does not match the schema', async () => {
       mockedRequest.mockResolvedValue(
         fakeOllamaResponse({ response: JSON.stringify({ wrongField: 1 }) }),
@@ -131,6 +160,10 @@ describe('ollamaLlmClient', () => {
       await expect(
         ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
       ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ raw: '{"wrongField":1}' }),
+      )
     })
 
     it('rounds the duration to whole milliseconds', async () => {

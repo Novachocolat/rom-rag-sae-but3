@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { env } from '../../env.js'
+import { logger } from '../../lib/logger.js'
 import { ollamaRequest } from './ollama-http.js'
 import { OllamaInvalidJsonError } from './ollama.error.js'
 import type {
@@ -72,6 +73,11 @@ async function runGenerateJson<T>(
   try {
     parsed = JSON.parse(raw)
   } catch {
+    // The raw output is the only way to understand what the model said
+    logger.error('Ollama returned non-JSON content', {
+      model: env.OLLAMA_LLM_MODEL,
+      raw,
+    })
     throw new OllamaInvalidJsonError(
       'Ollama returned non-JSON content for a generateJson call',
       { raw },
@@ -80,6 +86,11 @@ async function runGenerateJson<T>(
 
   const result = opts.schema.safeParse(parsed)
   if (!result.success) {
+    logger.error("Ollama's JSON output failed schema validation", {
+      model: env.OLLAMA_LLM_MODEL,
+      issues: result.error.issues,
+      raw,
+    })
     throw new OllamaInvalidJsonError(
       "Ollama's JSON output failed schema validation",
       { issues: result.error.issues, raw },

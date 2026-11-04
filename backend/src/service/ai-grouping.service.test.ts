@@ -1,5 +1,6 @@
 import type { CollectionGrouping } from '@repo/shared/types'
 import { describe, expect, it, vi } from 'vitest'
+import { OllamaContextOverflowError } from '../client/ollama/ollama.error.js'
 import {
   buildGroupingVariables,
   ClusterTooLargeError,
@@ -219,6 +220,31 @@ describe('proposeGroupings', () => {
 
     expect(generateJson).toHaveBeenCalledTimes(1)
     expect(outcomes).toHaveLength(1)
+  })
+
+  it('halves a chunk that overflows the context window and sends each half', async () => {
+    const { ports, generateJson } = makePorts(makeGrouping())
+    generateJson.mockRejectedValueOnce(new OllamaContextOverflowError('big'))
+
+    const outcomes = await proposeGroupings(makeRoms(makeIds(4)), ports)
+
+    expect(outcomes).toHaveLength(2)
+    expect(
+      generateJson.mock.calls.map(
+        ([options]) =>
+          (options as { prompt: string }).prompt.split('\n').length,
+      ),
+    ).toEqual([4, 2, 2])
+  })
+
+  it('gives up on a pair that still overflows', async () => {
+    const { ports, generateJson } = makePorts(makeGrouping())
+    generateJson.mockRejectedValue(new OllamaContextOverflowError('big'))
+
+    await expect(
+      proposeGroupings(makeRoms(makeIds(2)), ports),
+    ).rejects.toBeInstanceOf(OllamaContextOverflowError)
+    expect(generateJson).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the variants of one game in the same chunk', async () => {

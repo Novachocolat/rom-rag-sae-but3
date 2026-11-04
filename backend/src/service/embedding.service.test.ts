@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  OllamaContextOverflowError,
+  OllamaUnavailableError,
+} from '../client/ollama/ollama.error.js'
 import type { EmbeddingClient } from '../client/ollama/ollama.types.js'
 import {
   countEmbeddings,
@@ -80,6 +84,68 @@ describe('embedding.service', () => {
       )
 
       expect(result).toEqual({ embedded: 2, failed: EMBEDDING_BATCH_SIZE })
+    })
+
+    it('halves a batch that overflows the context window and retries each half', async () => {
+      vi.mocked(findRomsWithoutEmbedding).mockResolvedValue(makeRoms(4))
+      const client = makeClient()
+      vi.mocked(client.embed).mockRejectedValueOnce(
+        new OllamaContextOverflowError('too big'),
+      )
+
+      const result = await backfillEmbeddings(
+        'user-1',
+        new AbortController().signal,
+        client,
+      )
+
+      expect(result).toEqual({ embedded: 4, failed: 0 })
+      expect(
+        vi.mocked(client.embed).mock.calls.map(([texts]) => texts.length),
+      ).toEqual([4, 2, 2])
+    })
+
+    it('counts a single ROM that still overflows and keeps the others', async () => {
+      vi.mocked(findRomsWithoutEmbedding).mockResolvedValue(makeRoms(3))
+      const client = makeClient()
+      vi.mocked(client.embed).mockImplementation((texts) =>
+        texts.includes('game 1')
+          ? Promise.reject(new OllamaContextOverflowError('too big'))
+          : Promise.resolve(texts.map(() => [0.1, 0.2])),
+      )
+
+      const result = await backfillEmbeddings(
+        'user-1',
+        new AbortController().signal,
+        client,
+      )
+
+      expect(result).toEqual({ embedded: 2, failed: 1 })
+    })
+
+    it('stops at the first batch that finds Ollama unreachable, keeping what was written', async () => {
+      vi.mocked(findRomsWithoutEmbedding).mockResolvedValue(
+        makeRoms(EMBEDDING_BATCH_SIZE * 3),
+      )
+      const client = makeClient()
+      vi.mocked(client.embed)
+        .mockResolvedValueOnce(
+          Array.from({ length: EMBEDDING_BATCH_SIZE }, () => [0.1, 0.2]),
+        )
+        .mockRejectedValue(new OllamaUnavailableError('down'))
+
+      const result = await backfillEmbeddings(
+        'user-1',
+        new AbortController().signal,
+        client,
+      )
+
+      expect(result).toEqual({
+        embedded: EMBEDDING_BATCH_SIZE,
+        failed: EMBEDDING_BATCH_SIZE,
+      })
+      expect(client.embed).toHaveBeenCalledTimes(2)
+      expect(upsertEmbedding).toHaveBeenCalledTimes(EMBEDDING_BATCH_SIZE)
     })
 
     it('fails the batch when the model returns the wrong number of vectors', async () => {

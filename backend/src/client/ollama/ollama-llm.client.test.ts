@@ -11,6 +11,7 @@ import { recordError, recordInference } from '../../storage/metrics.storage.js'
 vi.mock('./ollama-http.js', () => ({ ollamaRequest: vi.fn() }))
 vi.mock('../../lib/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
 vi.mock('../../storage/metrics.storage.js', () => ({
   recordInference: vi.fn(),
   recordError: vi.fn(),

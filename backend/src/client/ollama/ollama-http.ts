@@ -36,18 +36,21 @@ function backoffDelay(attempt: number): number {
   return base + Math.random() * base
 }
 
-// Maps a non-2xx HTTP response to the Ollama error taxonomy
+// Maps a non-2xx HTTP response to the Ollama error taxonomy.
+// `model` is the model the request targeted: a missing model is reported by
+// name, so the user knows exactly which one to pull.
 function classifyHttpError(
   status: number,
   bodyText: string,
   path: string,
+  model: string,
 ): OllamaError {
   if (status === 404 && /model .*not found/i.test(bodyText)) {
-    return new OllamaModelNotFoundError('Ollama model is not available', {
-      path,
-      status,
-      body: bodyText,
-    })
+    // Name the model and the fix in the message, the route layer exposes it as is
+    return new OllamaModelNotFoundError(
+      `Ollama model "${model}" is not available (try: ollama pull ${model})`,
+      { path, status, model, body: bodyText },
+    )
   }
 
   if (/context length|out of memory/i.test(bodyText)) {
@@ -113,7 +116,7 @@ async function performRequest<T>(
   const bodyText = await response.text()
 
   if (!response.ok) {
-    throw classifyHttpError(response.status, bodyText, path)
+    throw classifyHttpError(response.status, bodyText, path, options.model)
   }
 
   logger.info('Ollama call succeeded', {

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { createPaginatedResponseSchema } from './api.schema.js'
 import { identificationSourceSchema } from './rom.schema.js'
+import { inferenceStatsSchema } from './ai.schema.js'
 
 // How a collection came to exist
 // `DAT_CLONE` covers both deterministic stages (catalog parent/clone link and identical base title)
@@ -98,6 +99,7 @@ export const collectionProposalSchema = z.object({
   model: z.string(),
   promptName: z.string(),
   promptVersion: z.string(),
+  inference: inferenceStatsSchema,
   createdAt: z.iso.datetime(),
   collection: collectionDetailSchema,
 })

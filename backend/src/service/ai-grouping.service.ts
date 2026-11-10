@@ -1,18 +1,19 @@
 import { collectionGroupingSchema } from '@repo/shared/schemas'
 import type { CollectionGrouping } from '@repo/shared/types'
 import { env } from '../env.js'
+import { OllamaContextOverflowError } from '../client/ollama/ollama.error.js'
 import type { LlmClient } from '../client/ollama/ollama.types.js'
 import { ollamaLlmClient } from '../client/ollama/ollama-llm.client.js'
 import { loadPrompts, renderPrompt } from './prompt-loader.service.js'
 import { normalizeTitle } from './title-normalizer.service.js'
 
-/** Name and version of the prompt file used for grouping (`prompts/<name>.<version>.md`). */
+// Name and version of the prompt file used for grouping (`prompts/<name>.<version>.md`)
 export const GROUPING_PROMPT = { name: 'grouping', version: 'v1' }
 
 // A bigger cluster would overflow the model's context window
 export const MAX_ROMS_PER_CALL = 15
 
-/** What the model is told about one ROM of a cluster. */
+// What the model is told about one ROM of a cluster
 export interface ClusterRom {
   id: string
   fileName: string
@@ -52,6 +53,7 @@ export interface GroupingOutcome {
   raw: string
   model: string
   durationMs: number
+  tokensPerSecond: number
   promptTokens: number
   completionTokens: number
 }
@@ -185,6 +187,7 @@ export async function proposeGrouping(
     raw: fresh.raw,
     model: fresh.model,
     durationMs: fresh.durationMs,
+    tokensPerSecond: fresh.tokensPerSecond,
     promptTokens: fresh.promptTokens,
     completionTokens: fresh.completionTokens,
   }
@@ -208,10 +211,34 @@ export async function proposeGroupings(
 
   const outcomes: GroupingOutcome[] = []
   for (const chunk of splitForPrompt(byTitle)) {
-    if (chunk.length < 2) continue
-    outcomes.push(await proposeGrouping(chunk, ports))
+    outcomes.push(...(await proposeChunk(chunk, ports)))
   }
   return outcomes
+}
+
+/**
+ * Sends one chunk to the model. When it overflows the context window the chunk
+ * is halved and each half is sent on its own (the order is kept, so the
+ * variants of one game mostly stay together). A single ROM is never sent.
+ */
+async function proposeChunk(
+  chunk: ClusterRom[],
+  ports: GroupingPorts,
+): Promise<GroupingOutcome[]> {
+  if (chunk.length < 2) return []
+
+  try {
+    return [await proposeGrouping(chunk, ports)]
+  } catch (err) {
+    if (!(err instanceof OllamaContextOverflowError) || chunk.length === 2) {
+      throw err
+    }
+    const middle = Math.ceil(chunk.length / 2)
+    return [
+      ...(await proposeChunk(chunk.slice(0, middle), ports)),
+      ...(await proposeChunk(chunk.slice(middle), ports)),
+    ]
+  }
 }
 
 /**

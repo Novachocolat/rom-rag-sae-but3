@@ -1,2 +1,4 @@
 # Ensures CI runners work on Linux
 * text=auto eol=lf
+# Ensures that binary files are not modified by Git
+dataset/roms/** binary

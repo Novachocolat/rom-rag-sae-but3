@@ -39,6 +39,7 @@ import {
   OllamaUnavailableError,
 } from '../client/ollama/ollama.error.js'
 import { ollamaLlmClient } from '../client/ollama/ollama-llm.client.js'
+import { recordCacheLookup } from '../storage/metrics.storage.js'
 
 export const IDENTIFICATION_PROMPT = { name: 'identification', version: 'v2' }
 
@@ -190,6 +191,7 @@ export interface IdentificationOutcome {
   raw: string
   model: string
   durationMs: number
+  tokensPerSecond: number
   promptTokens: number
   completionTokens: number
   fromCache: boolean
@@ -259,7 +261,9 @@ export async function proposeIdentification(
     issues,
     raw: entry.raw,
     model: entry.model,
+    // On a cache hit, these are the metrics of the original call
     durationMs: entry.durationMs,
+    tokensPerSecond: entry.tokensPerSecond,
     promptTokens: entry.promptTokens,
     completionTokens: entry.completionTokens,
     fromCache,
@@ -274,6 +278,18 @@ export function mergeCorrections(
   return { ...identification, ...corrections }
 }
 
+// Counts each cache lookup as a hit or a miss
+// `getCachedIdentification` answers null on any miss (absent, corrupt or outdated entry), never undefined
+export function withCacheMetrics(
+  get: IdentificationPorts['cache']['get'],
+): IdentificationPorts['cache']['get'] {
+  return async (key) => {
+    const cached = await get(key)
+    void recordCacheLookup(cached !== null) // Best effort, never rejects
+    return cached
+  }
+}
+
 // Builds the real ports: Ollama, Redis cache, DAT catalogs and the prompt file
 async function buildRealPorts(
   platforms: PlatformInfo[],
@@ -285,7 +301,10 @@ async function buildRealPorts(
     model: env.OLLAMA_LLM_MODEL,
     renderPrompt: (variables) =>
       renderPrompt(IDENTIFICATION_PROMPT.name, variables),
-    cache: { get: getCachedIdentification, set: setCachedIdentification },
+    cache: {
+      get: withCacheMetrics(getCachedIdentification),
+      set: setCachedIdentification,
+    },
     titleInCatalog: async (title, extension) =>
       (
         await findEntriesByNormalizedName(
@@ -376,6 +395,8 @@ export async function identifyStoredRom(romId: string, userId: string) {
       decision: outcome.decision,
       lowConfidence: outcome.decision === 'LOW_CONFIDENCE',
       source: 'AI_PROPOSED',
+      tokensPerSecond: outcome.tokensPerSecond,
+      fromCache: outcome.fromCache,
     },
     rawResponse: outcome.raw,
     model: outcome.model,
@@ -383,7 +404,7 @@ export async function identifyStoredRom(romId: string, userId: string) {
     promptVersion: IDENTIFICATION_PROMPT.version,
     confidence: outcome.confidence,
     status: statusFor(outcome.decision),
-    durationMs: Math.round(outcome.durationMs),
+    durationMs: outcome.durationMs,
     promptTokens: outcome.promptTokens,
     completionTokens: outcome.completionTokens,
   })

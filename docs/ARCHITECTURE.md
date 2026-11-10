@@ -231,3 +231,13 @@ See
 [ADR-011](./adr/011-opaque-redis-sessions-with-argon2id.md) and
 [ADR-012](./adr/012-in-process-job-with-redis-progress-no-bullmq.md) for the
 decisions behind the vector search, auth and job-progress pieces of this flow.
+
+## 6. AI metrics
+
+`client/ollama/ollama-llm.client.ts` wraps every LLM call in `measured`, which
+hands its duration and speed, or its error code, to
+`storage/metrics.storage.ts`. That storage writes Redis counters and bounded
+lists under `metrics:*` as a side channel: a Redis failure is logged and never
+fails the inference. `GET /api/metrics` aggregates them in
+`service/metrics.service.ts`. See [AI.md](./AI.md#metrics) for the keys and the
+response.

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { env } from '../../env.js'
+import { logger } from '../../lib/logger.js'
 import { ollamaRequest } from './ollama-http.js'
 import { OllamaInvalidJsonError } from './ollama.error.js'
 import type {
@@ -9,6 +10,8 @@ import type {
   LlmJsonResult,
   LlmTextResult,
 } from './ollama.types.js'
+import { AppError } from '../../lib/error.js'
+import { recordError, recordInference } from '../../storage/metrics.storage.js'
 
 // Shape of Ollama's POST /api/generate response.
 // `thinking` only appears when `think: true` was requested, and is never the
@@ -26,11 +29,12 @@ interface OllamaGenerateResponse {
 // Converts Ollama's nanosecond/count fields into our millisecond/tokens-per-
 // second metrics. Getting the 1e6/1e9 factors wrong silently inflates every
 // duration shown in the UI by a thousand, on a criterion that's explicitly graded.
+// `durationMs` is rounded here, once for every caller: proposals store it in an Int column
 function extractMetrics(res: OllamaGenerateResponse) {
   const evalDurationSeconds = res.eval_duration / 1e9
   return {
     model: res.model,
-    durationMs: res.total_duration / 1e6,
+    durationMs: Math.round(res.total_duration / 1e6),
     promptTokens: res.prompt_eval_count,
     completionTokens: res.eval_count,
     tokensPerSecond:
@@ -39,7 +43,7 @@ function extractMetrics(res: OllamaGenerateResponse) {
   }
 }
 
-async function generateJson<T>(
+async function runGenerateJson<T>(
   opts: GenerateJsonOptions<T>,
 ): Promise<LlmJsonResult<T>> {
   const response = await ollamaRequest<OllamaGenerateResponse>(
@@ -69,6 +73,11 @@ async function generateJson<T>(
   try {
     parsed = JSON.parse(raw)
   } catch {
+    // The raw output is the only way to understand what the model said
+    logger.error('Ollama returned non-JSON content', {
+      model: env.OLLAMA_LLM_MODEL,
+      raw,
+    })
     throw new OllamaInvalidJsonError(
       'Ollama returned non-JSON content for a generateJson call',
       { raw },
@@ -77,6 +86,11 @@ async function generateJson<T>(
 
   const result = opts.schema.safeParse(parsed)
   if (!result.success) {
+    logger.error("Ollama's JSON output failed schema validation", {
+      model: env.OLLAMA_LLM_MODEL,
+      issues: result.error.issues,
+      raw,
+    })
     throw new OllamaInvalidJsonError(
       "Ollama's JSON output failed schema validation",
       { issues: result.error.issues, raw },
@@ -86,7 +100,9 @@ async function generateJson<T>(
   return { data: result.data, raw, ...extractMetrics(response) }
 }
 
-async function generateText(opts: GenerateTextOptions): Promise<LlmTextResult> {
+async function runGenerateText(
+  opts: GenerateTextOptions,
+): Promise<LlmTextResult> {
   const response = await ollamaRequest<OllamaGenerateResponse>(
     '/api/generate',
     {
@@ -107,5 +123,25 @@ async function generateText(opts: GenerateTextOptions): Promise<LlmTextResult> {
 
   return { text: response.response, ...extractMetrics(response) }
 }
+
+// Records the outcome of one inference without ever altering it
+async function measured<
+  R extends { model: string; durationMs: number; tokensPerSecond: number },
+>(run: () => Promise<R>): Promise<R> {
+  try {
+    const result = await run()
+    void recordInference(result) // Best effort, never rejects
+    return result
+  } catch (err) {
+    void recordError(err instanceof AppError ? err.code : 'UNKNOWN_ERROR')
+    throw err
+  }
+}
+
+// Both calls go through `measured`, so no inference escapes the metrics
+const generateJson: LlmClient['generateJson'] = (opts) =>
+  measured(() => runGenerateJson(opts))
+const generateText: LlmClient['generateText'] = (opts) =>
+  measured(() => runGenerateText(opts))
 
 export const ollamaLlmClient: LlmClient = { generateJson, generateText }

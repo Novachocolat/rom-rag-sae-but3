@@ -1,11 +1,21 @@
 import { z } from 'zod'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { env } from '../../env.js'
+import { logger } from '../../lib/logger.js'
 import { ollamaRequest } from './ollama-http.js'
 import { ollamaLlmClient } from './ollama-llm.client.js'
 import { OllamaInvalidJsonError } from './ollama.error.js'
+import { AppError } from '../../lib/error.js'
+import { recordError, recordInference } from '../../storage/metrics.storage.js'
 
 vi.mock('./ollama-http.js', () => ({ ollamaRequest: vi.fn() }))
+vi.mock('../../lib/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+vi.mock('../../storage/metrics.storage.js', () => ({
+  recordInference: vi.fn(),
+  recordError: vi.fn(),
+}))
 
 const mockedRequest = vi.mocked(ollamaRequest)
 
@@ -117,6 +127,31 @@ describe('ollamaLlmClient', () => {
       ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
     })
 
+    it('keeps the raw output in the error details and logs it when `response` is not valid JSON', async () => {
+      mockedRequest.mockResolvedValue(
+        fakeOllamaResponse({ response: 'definitely not json' }),
+      )
+
+      await expect(
+        ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
+      ).rejects.toMatchObject({ details: { raw: 'definitely not json' } })
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          raw: 'definitely not json',
+          model: env.OLLAMA_LLM_MODEL,
+        }),
+      )
+    })
+
+    it('treats an empty `response` as invalid JSON', async () => {
+      mockedRequest.mockResolvedValue(fakeOllamaResponse({ response: '' }))
+
+      await expect(
+        ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
+      ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
+    })
+
     it('throws OllamaInvalidJsonError when the JSON does not match the schema', async () => {
       mockedRequest.mockResolvedValue(
         fakeOllamaResponse({ response: JSON.stringify({ wrongField: 1 }) }),
@@ -125,6 +160,23 @@ describe('ollamaLlmClient', () => {
       await expect(
         ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
       ).rejects.toBeInstanceOf(OllamaInvalidJsonError)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ raw: '{"wrongField":1}' }),
+      )
+    })
+
+    it('rounds the duration to whole milliseconds', async () => {
+      mockedRequest.mockResolvedValue(
+        fakeOllamaResponse({ total_duration: 1_234_567_890 }), // 1234.56789 ms
+      )
+
+      const result = await ollamaLlmClient.generateJson({
+        prompt: 'x',
+        schema: titleSchema,
+      })
+
+      expect(result.durationMs).toBe(1235)
     })
 
     it('guards against a zero eval_duration instead of dividing by zero', async () => {
@@ -138,6 +190,32 @@ describe('ollamaLlmClient', () => {
       })
 
       expect(result.tokensPerSecond).toBe(0)
+    })
+
+    it('records the inference metrics of a successful call', async () => {
+      mockedRequest.mockResolvedValue(fakeOllamaResponse())
+
+      await ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema })
+
+      expect(recordInference).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: env.OLLAMA_LLM_MODEL,
+          durationMs: 2000,
+          tokensPerSecond: 20,
+        }),
+      )
+    })
+
+    it('records the error code of a failed call and rethrows it', async () => {
+      mockedRequest.mockRejectedValue(
+        new AppError(504, 'OLLAMA_TIMEOUT', 'too slow'),
+      )
+
+      await expect(
+        ollamaLlmClient.generateJson({ prompt: 'x', schema: titleSchema }),
+      ).rejects.toThrow('too slow')
+      expect(recordError).toHaveBeenCalledWith('OLLAMA_TIMEOUT')
+      expect(recordInference).not.toHaveBeenCalled()
     })
   })
 
@@ -153,6 +231,30 @@ describe('ollamaLlmClient', () => {
       expect(options?.body).not.toHaveProperty('format')
       expect(result.text).toBe('Plain text answer')
       expect(result.durationMs).toBe(2000)
+    })
+
+    it('records the inference metrics of a successful call', async () => {
+      mockedRequest.mockResolvedValue(fakeOllamaResponse())
+
+      await ollamaLlmClient.generateText({ prompt: 'x' })
+
+      expect(recordInference).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: env.OLLAMA_LLM_MODEL,
+          durationMs: 2000,
+          tokensPerSecond: 20,
+        }),
+      )
+    })
+
+    it('records an unknown error as UNKNOWN_ERROR and rethrows it', async () => {
+      mockedRequest.mockRejectedValue(new Error('socket hang up'))
+
+      await expect(
+        ollamaLlmClient.generateText({ prompt: 'x' }),
+      ).rejects.toThrow('socket hang up')
+      expect(recordError).toHaveBeenCalledWith('UNKNOWN_ERROR')
+      expect(recordInference).not.toHaveBeenCalled()
     })
   })
 })

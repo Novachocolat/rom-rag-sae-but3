@@ -9,6 +9,7 @@
     "build": "tsc -b",
     "start": "node dist/server.js",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "ts:check": "tsc --noEmit",
     "db:generate": "prisma generate",

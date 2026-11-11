@@ -23,6 +23,7 @@
     "build": "npm run build --workspaces --if-present",
     "build:shared": "npm run build -w @repo/shared",
     "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage -w @repo/backend",
     "dev": "npm run build:shared && concurrently -k -n shared,backend,frontend,docs -c blue,green,magenta,yellow \"npm:dev:shared\" \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:docs:user\"",
     "dev:shared": "npm run dev -w @repo/shared",
     "dev:backend": "npm run dev -w @repo/backend",

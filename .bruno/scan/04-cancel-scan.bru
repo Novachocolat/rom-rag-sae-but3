@@ -1,0 +1,17 @@
+meta {
+  name: 04 cancel the scan
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/scans/{{scanJobId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("answers 204, 409", function () {
+    expect([204, 409]).to.include(res.getStatus());
+  });
+}

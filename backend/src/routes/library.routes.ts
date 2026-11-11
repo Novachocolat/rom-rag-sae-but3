@@ -14,6 +14,31 @@ const browseQuerySchema = z.object({
   path: z.string().optional().default(''),
 })
 
+/**
+ * @openapi
+ * /library/browse:
+ *   get:
+ *     tags: [Library]
+ *     summary: Lists the subdirectories of a folder of the ROM library
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: path
+ *         description: Folder relative to ROM_LIBRARY_ROOT, the root when empty
+ *         schema: { type: string, default: '' }
+ *     responses:
+ *       200:
+ *         description: The folder and its subdirectories
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/LibraryBrowse' }
+ *       400:
+ *         description: The path escapes the root or does not exist (INVALID_PATH)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ApiError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // GET /api/library/browse?path=
 // Lists subdirectories under ROM_LIBRARY_ROOT for the frontend's folder picker.
 libraryRouter.get(

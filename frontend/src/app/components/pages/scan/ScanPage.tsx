@@ -63,7 +63,7 @@ export function ScanPage() {
           )
         }
       >
-        Lancer
+        Start
       </Button>
 
       {progress.data && <ScanProgress progress={progress.data} />}

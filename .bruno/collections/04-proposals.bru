@@ -1,0 +1,16 @@
+meta {
+  name: 04 list grouping proposals
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/collections/proposals?page=1&pageSize=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+}

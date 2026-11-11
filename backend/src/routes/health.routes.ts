@@ -30,7 +30,25 @@ async function checkOllamaDependency(): Promise<DependencyStatus> {
 
 export const healthRouter = Router()
 
-// TODO: Add Swagger documentation with swagger-jsdoc package
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     tags: [Health]
+ *     summary: State of each dependency (Postgres, Redis, Ollama)
+ *     description: Ollama is optional, so its absence only degrades the status.
+ *     responses:
+ *       200:
+ *         description: The service is usable (`ok`, or `degraded` without Ollama)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Health' }
+ *       503:
+ *         description: Postgres or Redis is down (`error`)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Health' }
+ */
 // Checks the health state of each dependency (Postgres, Redis, Ollama)
 healthRouter.get('/health', async (_req, res) => {
   const [postgres, redisStatus, ollama] = await Promise.all([

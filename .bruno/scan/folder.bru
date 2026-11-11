@@ -1,0 +1,11 @@
+meta {
+  name: scan
+}
+
+docs {
+  # Scans
+
+  Run in order: 01 starts a scan of the whole library and stores its job ID.
+  04 answers 204 if the scan was still running, 409 (SCAN_NOT_RUNNING) if it
+  already finished.
+}

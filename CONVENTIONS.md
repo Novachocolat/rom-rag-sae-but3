@@ -128,6 +128,13 @@ already does it automatically.
 ## Testing
 
 - Vitest. Co-locate tests as `*.test.ts` next to the file under test.
+- **Only `backend/src/` has tests.** `frontend/` and `shared/` are not tested by
+  design: no Vitest run, no test file.
 - Every route under `backend/src/` must have a co-located test (enforced by CI's
   `tests-and-comments` job).
-- At least reach **>= 80%** coverage.
+- Coverage (v8) must stay at **>= 80%** lines, functions and statements and
+  **>=70%** branches (`backend/vitest.config.ts`). `npm test` does not check the
+  thresholds: run `npm run test:coverage`, which the `coverage` CI job runs on
+  every pull request and which fails under them.
+- Integration tests (`RUN_DB_INTEGRATION=1`, `RUN_OLLAMA_INTEGRATION=1`) are
+  skipped in CI and run locally only.

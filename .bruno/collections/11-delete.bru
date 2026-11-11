@@ -1,0 +1,15 @@
+meta {
+  name: 11 delete the collection
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/collections/{{collectionId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 204
+}

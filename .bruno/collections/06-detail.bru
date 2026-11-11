@@ -1,0 +1,16 @@
+meta {
+  name: 06 collection detail
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/collections/{{collectionId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{collectionId}}
+}

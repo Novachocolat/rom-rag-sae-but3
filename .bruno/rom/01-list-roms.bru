@@ -1,0 +1,22 @@
+meta {
+  name: 01 list ROMs (page 1)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/roms?page=1&pageSize=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+  res.body.pagination.page: eq 1
+  res.body.pagination.totalPages: isNumber
+}
+
+script:post-response {
+  if (res.body.data[0]) bru.setVar("romId", res.body.data[0].id);
+}

@@ -1,0 +1,26 @@
+meta {
+  name: 01 start a scan
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/scans
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "path": ""
+  }
+}
+
+assert {
+  res.status: eq 202
+  res.body.jobId: isString
+}
+
+script:post-response {
+  bru.setVar("scanJobId", res.body.jobId);
+}

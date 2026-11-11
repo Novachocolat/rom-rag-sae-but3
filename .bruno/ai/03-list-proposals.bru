@@ -1,0 +1,20 @@
+meta {
+  name: 03 list pending proposals
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/ai/proposals?status=PENDING&page=1&pageSize=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+}
+
+script:post-response {
+  if (res.body.data[0]) bru.setVar("proposalId", res.body.data[0].id);
+}

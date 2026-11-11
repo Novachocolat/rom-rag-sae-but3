@@ -1,3 +1,19 @@
 meta {
   name: ROM RAG BUT3 API
 }
+
+docs {
+  # ROM RAG BUT3 API
+
+  One request per endpoint, grouped by domain. Requires `npm run docker:dev`
+  and `npm run db:seed`, and the `dev` environment selected.
+
+  1. Set `demoPassword` (DEMO_USER_PASSWORD of `.env`) as a secret of `dev`.
+  2. Run `auth/09` (or the whole `auth` folder): every other folder but
+     `health/01` and `dat` reuses that session cookie.
+  3. Run `rom/01` before `ai` and `collections`: it stores the `romId` they use.
+
+  No request alters the seeded data: the collections it modifies are created
+  by the `collections` folder itself. The OpenAPI document of the same routes
+  is served at `/api/docs` outside production.
+}

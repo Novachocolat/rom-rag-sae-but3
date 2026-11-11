@@ -1,0 +1,21 @@
+meta {
+  name: 07 rename the collection
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/collections/{{collectionId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "canonicalTitle": "Bruno test collection (renamed)"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

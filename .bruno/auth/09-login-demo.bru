@@ -1,0 +1,23 @@
+meta {
+  name: 09 login as the seeded demo user
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{demoEmail}}",
+    "password": "{{demoPassword}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.email: eq {{demoEmail}}
+}

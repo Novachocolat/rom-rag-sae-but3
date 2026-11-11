@@ -1,0 +1,21 @@
+meta {
+  name: 04 reject a proposal
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/ai/proposals/{{proposalId}}/review
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "action": "reject"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

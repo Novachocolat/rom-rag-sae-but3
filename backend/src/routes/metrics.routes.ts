@@ -14,6 +14,22 @@ export const metricsRouter = Router()
  * same Ollama instance and the same AI cache, whose keys hold no user id.
  * Only the vector count is scoped to the user, since it measures their library.
  */
+/**
+ * @openapi
+ * /metrics:
+ *   get:
+ *     tags: [Metrics]
+ *     summary: Report on the AI stack (config, inference, cache, errors, vectors)
+ *     description: Global stats except `index.vectors`, which counts the user's own ROMs.
+ *     security: [{ sessionCookie: [] }]
+ *     responses:
+ *       200:
+ *         description: The report
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Metrics' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 metricsRouter.get('/metrics', requireAuth, async (_req, res, next) => {
   try {
     const userId = res.locals.userId as string

@@ -7,6 +7,7 @@ import { requestIdMiddleware } from './middleware/request-id.middleware.js'
 import { rootRouter } from './routes/index.js'
 import { notFoundMiddleware } from './middleware/not-found.middleware.js'
 import { errorMiddleware } from './middleware/error.middleware.js'
+import { docsRouter, isDocsEnabled } from './routes/docs.routes.js'
 
 // Builds the Express application without binding a port
 export function createApp(): Express {
@@ -20,6 +21,11 @@ export function createApp(): Express {
 
   app.use(express.json()) // JSON body parsing for every route
   app.use(cookieParser()) // `req.cookies` can be parsed easily
+
+  // Swagger UI and OpenAPI document, outside production only
+  if (isDocsEnabled(env.NODE_ENV)) {
+    app.use('/api', docsRouter) // GET /api/docs, GET /api/docs.json
+  }
 
   // Every backend routes use `/api` as a base
   app.use('/api', rootRouter)

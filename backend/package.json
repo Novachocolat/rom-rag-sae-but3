@@ -34,6 +34,8 @@
     "ioredis": "~6.0.0",
     "pg": "~8.23.0",
     "pgvector": "^0.3.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "~4.5.4"
   },
   "devDependencies": {
@@ -43,6 +45,8 @@
     "@types/node": "^24.13.3",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "@vitest/coverage-v8": "^5.0.0",
     "prisma": "^7.10.0",
     "supertest": "^7.2.2",

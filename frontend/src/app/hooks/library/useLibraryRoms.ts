@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client.ts'
 import { useAppSelector } from '@/app/store/store-hooks'
 import {
@@ -22,10 +22,11 @@ export function useLibraryRoms() {
       if (filters.identificationSource)
         params.set('identificationSource', filters.identificationSource)
       params.set('page', String(filters.page))
-      if (filters.sort) params.set('sort', filters.sort)
 
       const response = await apiClient<unknown>(`/roms?${params}`)
       return romListResponseSchema.parse(response)
     },
+    placeholderData: keepPreviousData,
+    staleTime: 0,
   })
 }

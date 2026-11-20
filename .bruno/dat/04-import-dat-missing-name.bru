@@ -1,0 +1,20 @@
+meta {
+  name: 04 import rejects an empty body
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/dat/import
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 400
+  res.body.error.code: eq VALIDATION_ERROR
+}

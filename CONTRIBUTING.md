@@ -212,6 +212,7 @@ npm run format:check
 npm run lint
 npm run ts:check
 npm test
+npm run test:coverage
 ```
 
 ## Pull requests

@@ -73,7 +73,36 @@ function toRomDetail(rom: RomWithDetail): RomDetail {
   }
 }
 
-// TODO: Add Swagger documentation with swagger-jsdoc package
+/**
+ * @openapi
+ * /roms:
+ *   get:
+ *     tags: [ROMs]
+ *     summary: Lists the user's ROMs, paginated and filtered
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         description: Matched against the title and the file name
+ *         schema: { type: string }
+ *       - in: query
+ *         name: platformId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: identificationSource
+ *         schema: { $ref: '#/components/schemas/IdentificationSource' }
+ *       - $ref: '#/components/parameters/Page'
+ *       - $ref: '#/components/parameters/PageSize'
+ *     responses:
+ *       200:
+ *         description: One page of ROM summaries
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/RomPage' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
+// GET /api/roms: one page of the user's library, filtered
 romRouter.get(
   '/roms',
   requireAuth,
@@ -110,6 +139,25 @@ romRouter.get(
   },
 )
 
+/**
+ * @openapi
+ * /roms/{id}:
+ *   get:
+ *     tags: [ROMs]
+ *     summary: Full record of one ROM, with its matched catalog entry
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdPath'
+ *     responses:
+ *       200:
+ *         description: The ROM
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/RomDetail' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ */
 // GET /api/roms/:id: the full record of one ROM, for its detail page
 romRouter.get(
   '/roms/:id',

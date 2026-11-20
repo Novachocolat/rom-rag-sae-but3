@@ -1,0 +1,23 @@
+meta {
+  name: 03 import a DAT file
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/dat/import
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "fileName": "Nintendo - Game Boy (20260915-022607).dat"
+  }
+}
+
+tests {
+  test("answers 201, 409", function () {
+    expect([201, 409]).to.include(res.getStatus());
+  });
+}

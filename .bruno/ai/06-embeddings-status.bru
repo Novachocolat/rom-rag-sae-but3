@@ -1,0 +1,15 @@
+meta {
+  name: 06 embeddings status
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/ai/embeddings/status
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

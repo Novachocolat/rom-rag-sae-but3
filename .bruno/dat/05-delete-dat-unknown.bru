@@ -1,0 +1,15 @@
+meta {
+  name: 05 delete an unknown DAT file
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/dat/00000000-0000-4000-8000-000000000000
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+}

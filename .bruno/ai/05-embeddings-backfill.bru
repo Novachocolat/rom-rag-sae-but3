@@ -1,0 +1,16 @@
+meta {
+  name: 05 backfill embeddings
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/ai/embeddings/backfill
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 202
+  res.body.jobId: isString
+}

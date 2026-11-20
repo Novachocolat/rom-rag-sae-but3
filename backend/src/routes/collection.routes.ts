@@ -330,6 +330,26 @@ async function toCollectionProposal(
  * answers 202 with its id. Answers 409 DETECTION_ALREADY_RUNNING while a
  * detection of the same user is still running.
  */
+/**
+ * @openapi
+ * /collections/detect:
+ *   post:
+ *     tags: [Collections]
+ *     summary: Groups the user's ROMs into collections as a background job
+ *     security: [{ sessionCookie: [] }]
+ *     responses:
+ *       202:
+ *         description: Detection started, collections appear in GET /collections
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/JobAccepted' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       409:
+ *         description: A detection of this user is already running (DETECTION_ALREADY_RUNNING)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ApiError' }
+ */
 collectionRouter.post('/collections/detect', requireAuth, (_req, res, next) => {
   try {
     const userId = res.locals.userId as string
@@ -359,6 +379,21 @@ collectionRouter.post('/collections/detect', requireAuth, (_req, res, next) => {
  * user's ROMs. Declared before /collections/:id so that "duplicates" is not
  * read as an id.
  */
+/**
+ * @openapi
+ * /collections/duplicates:
+ *   get:
+ *     tags: [Collections]
+ *     summary: Exact and header duplicates among the user's ROMs
+ *     security: [{ sessionCookie: [] }]
+ *     responses:
+ *       200:
+ *         description: Every group of duplicates
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/DuplicateList' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 collectionRouter.get(
   '/collections/duplicates',
   requireAuth,
@@ -386,6 +421,25 @@ collectionRouter.get(
 )
 
 /** GET /api/collections: paginated list of the user's collections with their member count. */
+/**
+ * @openapi
+ * /collections:
+ *   get:
+ *     tags: [Collections]
+ *     summary: The user's collections with their member count
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/Page'
+ *       - $ref: '#/components/parameters/PageSize'
+ *     responses:
+ *       200:
+ *         description: One page of collections
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CollectionPage' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 collectionRouter.get(
   '/collections',
   requireAuth,
@@ -429,6 +483,25 @@ collectionRouter.get(
  * the collection it created. Declared before /collections/:id so that
  * "proposals" is not read as an id.
  */
+/**
+ * @openapi
+ * /collections/proposals:
+ *   get:
+ *     tags: [Collections]
+ *     summary: AI groupings waiting for review, each with the collection it created
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/Page'
+ *       - $ref: '#/components/parameters/PageSize'
+ *     responses:
+ *       200:
+ *         description: One page of grouping proposals
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CollectionProposalPage' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 collectionRouter.get(
   '/collections/proposals',
   requireAuth,
@@ -466,6 +539,57 @@ collectionRouter.get(
 )
 
 /** GET /api/collections/:id: one collection, its members and their pairwise similarity. */
+/**
+ * @openapi
+ * /collections/{id}:
+ *   get:
+ *     tags: [Collections]
+ *     summary: One collection, its members and their pairwise similarity
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdPath'
+ *     responses:
+ *       200:
+ *         description: The collection
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CollectionDetail' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *   patch:
+ *     tags: [Collections]
+ *     summary: Renames, adds members and removes members, all or nothing
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdPath'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/CollectionUpdateRequest' }
+ *           example: { canonicalTitle: Tetris }
+ *     responses:
+ *       200:
+ *         description: The updated collection
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CollectionDetail' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *   delete:
+ *     tags: [Collections]
+ *     summary: Dissolves the collection and keeps its ROMs (also rejects an AI grouping)
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdPath'
+ *     responses:
+ *       204: { description: Collection dissolved }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ */
 collectionRouter.get(
   '/collections/:id',
   requireAuth,
@@ -482,6 +606,27 @@ collectionRouter.get(
 )
 
 /** POST /api/collections: manual creation (source MANUAL), answers 201. */
+/**
+ * @openapi
+ * /collections:
+ *   post:
+ *     tags: [Collections]
+ *     summary: Creates a MANUAL collection
+ *     security: [{ sessionCookie: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/CollectionCreateRequest' }
+ *     responses:
+ *       201:
+ *         description: Collection created
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CollectionCreated' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 collectionRouter.post(
   '/collections',
   requireAuth,
@@ -539,6 +684,30 @@ collectionRouter.patch(
  * collection of the URL and dissolves `sourceId`. Answers the merged
  * collection.
  */
+/**
+ * @openapi
+ * /collections/{id}/merge:
+ *   post:
+ *     tags: [Collections]
+ *     summary: Moves the members of `sourceId` into this collection and dissolves `sourceId`
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdPath'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/CollectionMergeRequest' }
+ *     responses:
+ *       200:
+ *         description: The merged collection
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CollectionDetail' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ */
 collectionRouter.post(
   '/collections/:id/merge',
   requireAuth,
@@ -564,6 +733,34 @@ collectionRouter.post(
  * POST /api/collections/:id/accept: keeps an AI collection, optionally without
  * the ROMs listed in `excludeRomIds`. Answers the collection as kept. Rejecting
  * is the DELETE of the collection.
+ */
+/**
+ * @openapi
+ * /collections/{id}/accept:
+ *   post:
+ *     tags: [Collections]
+ *     summary: Keeps an AI collection, optionally without some of its ROMs
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdPath'
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/CollectionAcceptRequest' }
+ *     responses:
+ *       200:
+ *         description: The collection as kept
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CollectionDetail' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       409:
+ *         description: No grouping of this collection waits for review (NO_PENDING_PROPOSAL)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ApiError' }
  */
 collectionRouter.post(
   '/collections/:id/accept',

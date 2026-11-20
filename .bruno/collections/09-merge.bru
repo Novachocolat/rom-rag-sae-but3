@@ -1,0 +1,22 @@
+meta {
+  name: 09 merge the second collection into the first
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/collections/{{collectionId}}/merge
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "sourceId": "{{mergeSourceId}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{collectionId}}
+}

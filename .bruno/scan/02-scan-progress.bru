@@ -1,0 +1,16 @@
+meta {
+  name: 02 scan progress
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/scans/{{scanJobId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: isString
+}

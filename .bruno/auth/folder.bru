@@ -12,5 +12,9 @@ docs {
   01 signup -> 02 signup rejects the same email -> 03 me works ->
   04 logout -> 05 me fails (session actually deleted) -> 06 login ->
   07 login rejects a wrong password -> 08 login rejects an unknown email
-  the same way (no account enumeration).
+  the same way (no account enumeration) -> 09 login as the seeded demo
+  user, whose session the other folders reuse.
+
+  09 needs `demoPassword` (the DEMO_USER_PASSWORD of `.env`) set as a secret
+  of the `dev` environment: Bruno never writes secret values to the repo.
 }

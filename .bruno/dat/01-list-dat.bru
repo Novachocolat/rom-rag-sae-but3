@@ -1,0 +1,16 @@
+meta {
+  name: 01 list imported DAT files
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/dat
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+}

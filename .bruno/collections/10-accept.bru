@@ -1,0 +1,22 @@
+meta {
+  name: 10 accept rejects a collection with no proposal
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/collections/{{collectionId}}/accept
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "excludeRomIds": []
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.error.code: eq NO_PENDING_PROPOSAL
+}

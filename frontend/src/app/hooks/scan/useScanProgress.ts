@@ -1,13 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client.ts'
 import { scanProgressSchema } from '@repo/shared/schemas'
 import type { ScanProgress } from '@repo/shared/types'
+import { METRICS_QUERY_KEY } from '@/app/hooks/metrics/useMetrics'
 
 const TERMINAL_STATUSES = ['COMPLETED', 'FAILED', 'CANCELLED']
 
 // Hook to call GET /scan/<jobId> to retrieve a scan progress
 export function useScanProgress(jobId: string | undefined) {
-  return useQuery<ScanProgress>({
+  const queryClient = useQueryClient()
+  const query = useQuery<ScanProgress>({
     queryKey: ['scans', jobId],
     queryFn: async () => {
       const response = await apiClient<unknown>(`/scans/${jobId}`)
@@ -19,4 +22,15 @@ export function useScanProgress(jobId: string | undefined) {
       return status && TERMINAL_STATUSES.includes(status) ? false : 1500 // Quits polling if scan is `COMPLETED`, `FAILED` or `CANCELLED`
     },
   })
+  const status = query.data?.status
+
+  // A finished scan changes the library: drop every cached ROM list and the metrics
+  useEffect(() => {
+    if (status && TERMINAL_STATUSES.includes(status)) {
+      void queryClient.invalidateQueries({ queryKey: ['roms'] })
+      void queryClient.invalidateQueries({ queryKey: METRICS_QUERY_KEY })
+    }
+  }, [status, queryClient])
+
+  return query
 }

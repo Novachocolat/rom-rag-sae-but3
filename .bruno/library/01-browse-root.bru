@@ -1,0 +1,16 @@
+meta {
+  name: 01 browse the library root
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/library/browse?path=
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.directories: isArray
+}

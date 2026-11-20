@@ -1,0 +1,17 @@
+meta {
+  name: 03 list scans
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/scans?page=1&pageSize=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+  res.body.pagination.page: eq 1
+}

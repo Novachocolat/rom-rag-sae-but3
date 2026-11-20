@@ -1,0 +1,16 @@
+meta {
+  name: 01 identify one ROM
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/ai/roms/{{romId}}/identify
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.proposal: isDefined
+}

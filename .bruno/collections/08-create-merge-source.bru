@@ -1,0 +1,25 @@
+meta {
+  name: 08 create a second collection to merge
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/collections
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "canonicalTitle": "Bruno merge source"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("mergeSourceId", res.body.id);
+}

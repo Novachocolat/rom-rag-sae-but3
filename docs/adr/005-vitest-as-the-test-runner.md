@@ -37,3 +37,10 @@
 - Risk(s): a global coverage threshold can hide an untested critical module, so
   it must be reviewed for coverage explicitly; tests hitting Ollama must be
   mocked to keep the suite deterministic.
+
+## Amendment (2026-11-10)
+
+- Only the backend is covered with tests, with thresholds checked with
+  `test:coverage` script.
+- `pr-checks` was updated to feature a new `coverage` job that calls the latter.
+- **Integrations tests** are skipped by the CI, but work locally.

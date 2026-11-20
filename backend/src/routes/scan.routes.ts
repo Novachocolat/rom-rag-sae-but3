@@ -140,6 +140,32 @@ function buildScanDependencies(
   }
 }
 
+/**
+ * @openapi
+ * /scans:
+ *   post:
+ *     tags: [Scans]
+ *     summary: Starts a scan of a library folder as a background job
+ *     security: [{ sessionCookie: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/ScanRequest' }
+ *           example: { path: '' }
+ *     responses:
+ *       202:
+ *         description: Scan started, follow it with GET /scans/{id}
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/JobAccepted' }
+ *       400:
+ *         description: Invalid body, or a path that is not a library folder (INVALID_PATH)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ApiError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // POST /api/scans: records the job, starts it in the background, answers 202
 scanRouter.post(
   '/scans',
@@ -190,6 +216,41 @@ scanRouter.post(
   },
 )
 
+/**
+ * @openapi
+ * /scans/{id}:
+ *   get:
+ *     tags: [Scans]
+ *     summary: Progress of one scan, live while it runs
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdPath'
+ *     responses:
+ *       200:
+ *         description: The scan progress
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ScanProgress' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *   delete:
+ *     tags: [Scans]
+ *     summary: Cancels a running scan, which then ends CANCELLED
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdPath'
+ *     responses:
+ *       204: { description: Cancellation requested }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       409:
+ *         description: The scan is not running anymore (SCAN_NOT_RUNNING)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ApiError' }
+ */
 // GET /api/scans/:id: live progress from Redis, PostgreSQL once it expired
 scanRouter.get(
   '/scans/:id',
@@ -220,6 +281,25 @@ scanRouter.get(
   },
 )
 
+/**
+ * @openapi
+ * /scans:
+ *   get:
+ *     tags: [Scans]
+ *     summary: The user's scan history, most recent first
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/Page'
+ *       - $ref: '#/components/parameters/PageSize'
+ *     responses:
+ *       200:
+ *         description: One page of scans
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ScanJobPage' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // GET /api/scans: the user's scan history, most recent first
 scanRouter.get(
   '/scans',

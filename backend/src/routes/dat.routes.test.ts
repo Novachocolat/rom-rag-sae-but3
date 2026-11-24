@@ -6,11 +6,13 @@ import {
   getDatCatalog,
   listPlatformsCatalog,
   deleteDatFile,
+  importDatContent,
 } from '../service/dat-import.service.js'
 
 // Mocks the necessary functions for testing
 vi.mock('../service/dat-import.service.js', () => ({
   importDatFile: vi.fn(),
+  importDatContent: vi.fn(),
   getDatCatalog: vi.fn(),
   listPlatformsCatalog: vi.fn(),
   deleteDatFile: vi.fn(),
@@ -110,6 +112,46 @@ describe('dat routes', () => {
 
       expect(response.status).toBe(204)
       expect(deleteDatFile).toHaveBeenCalledWith(id)
+    })
+  })
+
+  describe('POST /dat/upload', () => {
+    it('must import the raw body under the given file name', async () => {
+      vi.mocked(importDatContent).mockResolvedValue({
+        datFile: { id: 'dat-1' },
+        insertedEntries: 2,
+      } as never)
+
+      const response = await request(createApp())
+        .post('/api/dat/upload?fileName=Nintendo%20-%20Game%20Boy.dat')
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from('<datafile/>'))
+
+      expect(response.status).toBe(201)
+      expect(importDatContent).toHaveBeenCalledWith(
+        'Nintendo - Game Boy.dat',
+        Buffer.from('<datafile/>'),
+      )
+    })
+
+    it('must reject a request without fileName', async () => {
+      const response = await request(createApp())
+        .post('/api/dat/upload')
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from('<datafile/>'))
+
+      expect(response.status).toBe(400)
+      expect(importDatContent).not.toHaveBeenCalled()
+    })
+
+    it('must reject an empty file', async () => {
+      const response = await request(createApp())
+        .post('/api/dat/upload?fileName=empty.dat')
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.alloc(0))
+
+      expect(response.status).toBe(400)
+      expect(importDatContent).not.toHaveBeenCalled()
     })
   })
 })

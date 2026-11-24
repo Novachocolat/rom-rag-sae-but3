@@ -61,6 +61,7 @@ function resolveDatFilePath(fileName: string): string {
   return resolved
 }
 
+// Imports a .dat catalog of dataset/dat by its file name
 export async function importDatFile(fileName: string) {
   const filePath = resolveDatFilePath(fileName)
 
@@ -71,6 +72,11 @@ export async function importDatFile(fileName: string) {
     throw AppError.notFound('DAT_FILE_NOT_FOUND', `File not found: ${fileName}`)
   }
 
+  return importDatContent(fileName, buffer)
+}
+
+// Imports a .dat catalog from its raw content, recorded under `fileName`
+export async function importDatContent(fileName: string, buffer: Buffer) {
   // 1. Avoid importing the same .dat file twice
   const contentSha1 = createHash('sha1').update(buffer).digest('hex')
   const alreadyImported = await findDatFileByContentSha1(

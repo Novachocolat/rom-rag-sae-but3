@@ -6,6 +6,7 @@ import type {
   platformSchema,
   romDatEntrySchema,
   romDetailSchema,
+  romExportQuerySchema,
 } from '../schemas/rom.schema.js'
 
 export type IdentificationSource = z.infer<typeof identificationSourceSchema>
@@ -14,3 +15,4 @@ export type RomListQuery = z.infer<typeof romListQuerySchema>
 export type Platform = z.infer<typeof platformSchema>
 export type RomDatEntry = z.infer<typeof romDatEntrySchema>
 export type RomDetail = z.infer<typeof romDetailSchema>
+export type RomExportQuery = z.infer<typeof romExportQuerySchema>

@@ -8,6 +8,8 @@ import {
   listRoms,
   listUnidentifiedRomIds,
   upsertRom,
+  listKnownRomFiles,
+  listRomsForExport,
   type UpsertRomInput,
 } from './rom.storage.js'
 
@@ -165,6 +167,28 @@ describe('rom.storage', () => {
 
     expect(deleteMany).toHaveBeenCalledWith({
       where: { userId: 'user-1', relativePath: { notIn: [] } },
+    })
+  })
+
+  it('listRomsForExport lists every matching ROM with its platform, unpaged', async () => {
+    findMany.mockResolvedValue([])
+    await listRomsForExport({ userId: 'user-1', collectionId: 'col-1' })
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        collectionMembers: { some: { collectionId: 'col-1' } },
+      },
+      orderBy: [{ fileName: 'asc' }, { id: 'asc' }],
+      include: { platform: true },
+    })
+  })
+
+  it('listKnownRomFiles selects only what an incremental scan compares', async () => {
+    findMany.mockResolvedValue([])
+    await listKnownRomFiles('user-1')
+    expect(findMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+      select: { relativePath: true, sizeBytes: true, lastScannedAt: true },
     })
   })
 })

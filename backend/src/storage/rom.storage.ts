@@ -72,6 +72,12 @@ export interface DuplicateCandidate {
   sha1Data: string | null
 }
 
+export interface KnownRomFile {
+  relativePath: string
+  sizeBytes: bigint
+  lastScannedAt: Date
+}
+
 // Relations the detail page displays next to the ROM itself
 const romDetailInclude = {
   platform: true,
@@ -92,6 +98,14 @@ const ORDER_BY: Record<
   releaseYear: (order) => ({ releaseYear: { sort: order, nulls: 'last' } }),
   sizeBytes: (order) => ({ sizeBytes: order }),
   lastScannedAt: (order) => ({ lastScannedAt: order }),
+}
+
+// What an incremental scan compares each file against, for every ROM of a user
+export function listKnownRomFiles(userId: string): Promise<KnownRomFile[]> {
+  return prisma.rom.findMany({
+    where: { userId },
+    select: { relativePath: true, sizeBytes: true, lastScannedAt: true },
+  })
 }
 
 // Creates or updates a ROM keyed by `userId` + `relativePath`, so rescanning
@@ -200,6 +214,17 @@ export async function listRomIds(filters: RomFilters): Promise<string[]> {
     select: { id: true },
   })
   return rows.map((row) => row.id)
+}
+
+// Every ROM of a user matching `filters` with its platform, unpaged, for an export
+export function listRomsForExport(
+  filters: RomFilters,
+): Promise<ListRomsResult['roms']> {
+  return prisma.rom.findMany({
+    where: romWhere(filters),
+    orderBy: [{ fileName: 'asc' }, { id: 'asc' }],
+    include: { platform: true },
+  })
 }
 
 // What duplicate detection needs from every ROM of a user, and nothing more

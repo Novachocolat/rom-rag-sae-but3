@@ -1,10 +1,12 @@
-import { romListQuerySchema } from '@repo/shared/schemas'
+import { romExportQuerySchema, romListQuerySchema } from '@repo/shared/schemas'
 import type {
   Paginated,
   RomDetail,
   RomListQuery,
   RomSummary,
+  RomExportQuery,
 } from '@repo/shared/types'
+import { toCsv, type RomExportRow } from '../service/rom-export.service.js'
 import { Router } from 'express'
 import { z } from 'zod'
 import { AppError } from '../lib/error.js'
@@ -13,6 +15,7 @@ import { validate } from '../middleware/validate.middleware.js'
 import {
   findRomDetail,
   listRoms,
+  listRomsForExport,
   type ListRomsResult,
   type RomWithDetail,
 } from '../storage/rom.storage.js'
@@ -72,6 +75,72 @@ function toRomDetail(rom: RomWithDetail): RomDetail {
     },
   }
 }
+
+// Flattens a ROM to one export row: BigInt becomes a number, the platform its name
+function toRomExportRow(rom: ListRomsResult['roms'][number]): RomExportRow {
+  return {
+    title: rom.title,
+    fileName: rom.fileName,
+    relativePath: rom.relativePath,
+    platform: rom.platform?.name ?? null,
+    region: rom.region,
+    releaseYear: rom.releaseYear,
+    sizeBytes: Number(rom.sizeBytes),
+    identificationSource: rom.identificationSource,
+    confidence: rom.confidence,
+    md5: rom.md5,
+    sha1: rom.sha1,
+  }
+}
+
+/**
+ * @openapi
+ * /roms/export:
+ *   get:
+ *     tags: [ROMs]
+ *     summary: Downloads the user's library, or one collection, as CSV or JSON
+ *     security: [{ sessionCookie: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: format
+ *         schema: { type: string, enum: [csv, json], default: csv }
+ *       - in: query
+ *         name: collectionId
+ *         description: Narrows the export to one collection
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: The export, as an attachment
+ *         content:
+ *           text/csv:
+ *             schema: { type: string }
+ *           application/json:
+ *             schema: { type: array, items: { type: object } }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
+// GET /api/roms/export: the whole library, or one collection, as a file download
+romRouter.get(
+  '/roms/export',
+  requireAuth,
+  validate({ query: romExportQuerySchema }),
+  async (req, res, next) => {
+    try {
+      const userId = res.locals.userId as string
+      const { format, collectionId } = req.query as unknown as RomExportQuery
+
+      const rows = (await listRomsForExport({ userId, collectionId })).map(
+        toRomExportRow,
+      )
+
+      res.attachment(`${collectionId ? 'collection' : 'library'}.${format}`)
+      if (format === 'csv') res.send(toCsv(rows))
+      else res.json(rows)
+    } catch (err) {
+      next(err)
+    }
+  },
+)
 
 /**
  * @openapi

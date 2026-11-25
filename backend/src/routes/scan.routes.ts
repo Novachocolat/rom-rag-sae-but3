@@ -45,7 +45,7 @@ import {
   walkDirectory,
   type WalkEntry,
 } from '../storage/filesystem.storage.js'
-import { upsertRom } from '../storage/rom.storage.js'
+import { listKnownRomFiles, upsertRom } from '../storage/rom.storage.js'
 import {
   createScanJob,
   findScanJob,
@@ -137,6 +137,7 @@ function buildScanDependencies(
         await finishScanJob(jobId, status, counters, errorMessage)
       },
     },
+    listKnownFiles: () => listKnownRomFiles(userId),
   }
 }
 
@@ -174,7 +175,7 @@ scanRouter.post(
   async (req, res, next) => {
     try {
       const userId = res.locals.userId as string
-      const { path: requestedPath } = req.body as ScanRequest
+      const { path: requestedPath, incremental } = req.body as ScanRequest
 
       if (!(await isLibraryDirectory(requestedPath))) {
         next(
@@ -201,6 +202,7 @@ scanRouter.post(
             rootRelativePath,
             concurrency: env.SCAN_CONCURRENCY,
             signal,
+            incremental,
           }),
         job.id,
       )

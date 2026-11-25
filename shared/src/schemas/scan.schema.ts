@@ -1,8 +1,10 @@
 import { z } from 'zod'
 
 // Scan request payload with `path` relative to `ROM_LIBRARY_ROOT`, as `''` scans it whole
+// `incremental` skips the files already stored and unchanged since their last scan
 export const scanRequestSchema = z.object({
   path: z.string(),
+  incremental: z.boolean().default(false),
 })
 
 // Scan status, same values as Prisma's `ScanJobStatus`, so Redis and PostgreSQL agree

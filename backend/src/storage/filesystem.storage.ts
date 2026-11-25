@@ -13,6 +13,7 @@ export interface WalkEntry {
   absolutePath: string
   relativePath: string
   sizeBytes: number
+  modifiedAt: Date
 }
 
 export interface FileHashes {
@@ -137,6 +138,7 @@ export async function* walkDirectory(
           .split(path.sep)
           .join('/'),
         sizeBytes: stats.size,
+        modifiedAt: stats.mtime,
       }
     }
   }

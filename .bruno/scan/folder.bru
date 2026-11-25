@@ -7,5 +7,6 @@ docs {
 
   Run in order: 01 starts a scan of the whole library and stores its job ID.
   04 answers 204 if the scan was still running, 409 (SCAN_NOT_RUNNING) if it
-  already finished.
+  already finished. 05 starts an incremental scan, which only processes the
+  files added or modified since their last scan.
 }

@@ -1,0 +1,16 @@
+meta {
+  name: 04 export the library as JSON
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/roms/export?format=json
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body: isArray
+}

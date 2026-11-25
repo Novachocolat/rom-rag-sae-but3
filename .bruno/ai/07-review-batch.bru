@@ -1,0 +1,24 @@
+meta {
+  name: 07 bulk-reject proposals at full confidence
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/ai/proposals/review-batch
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "action": "reject",
+    "minConfidence": 1
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.reviewed: isNumber
+  res.body.failed: isNumber
+}

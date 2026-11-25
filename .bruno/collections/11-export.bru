@@ -1,0 +1,19 @@
+meta {
+  name: 11 export the collection as JSON
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/roms/export?format=json&collectionId={{collectionId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("answers the collection members as a JSON attachment", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-disposition")).to.contain("collection.json");
+    expect(res.getBody()).to.be.an("array").that.is.not.empty;
+  });
+}

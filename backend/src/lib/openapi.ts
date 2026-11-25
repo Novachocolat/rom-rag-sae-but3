@@ -28,6 +28,8 @@ import {
   modelMetricsSchema,
   paginationSchema,
   platformSchema,
+  proposalBulkReviewResultSchema,
+  proposalBulkReviewSchema,
   proposalCorrectionsSchema,
   proposalReviewSchema,
   publicUserSchema,
@@ -151,6 +153,8 @@ const components: Record<string, z.ZodType> = {
   ProposalReviewRequest: proposalReviewSchema,
   ProposalReviewResult: proposalReviewResultSchema,
   EmbeddingStatus: embeddingStatusSchema,
+  ProposalBulkReviewRequest: proposalBulkReviewSchema,
+  ProposalBulkReviewResult: proposalBulkReviewResultSchema,
   // Collections
   CollectionSource: collectionSourceSchema,
   CollectionSummary: collectionSummarySchema,

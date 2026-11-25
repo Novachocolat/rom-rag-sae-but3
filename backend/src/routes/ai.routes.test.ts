@@ -8,6 +8,7 @@ import { redis } from '../lib/redis.js'
 import {
   identifyStoredRom,
   identifyUnidentifiedRoms,
+  reviewPendingProposals,
   reviewProposal,
 } from '../service/ai-identification.service.js'
 import { getEmbeddingStatus } from '../service/embedding.service.js'
@@ -25,6 +26,7 @@ vi.mock('../service/ai-identification.service.js', () => ({
   identifyStoredRom: vi.fn(),
   identifyUnidentifiedRoms: vi.fn(),
   reviewProposal: vi.fn(),
+  reviewPendingProposals: vi.fn(),
 }))
 vi.mock('../storage/ai-proposal.storage.js', () => ({
   listProposals: vi.fn(),
@@ -362,6 +364,37 @@ describe('AI routes', () => {
 
       expect(response.status).toBe(200)
       expect(response.body).toEqual(status)
+    })
+  })
+
+  describe('POST /api/ai/proposals/review-batch', () => {
+    it('reviews the pending proposals at or above the confidence', async () => {
+      vi.mocked(reviewPendingProposals).mockResolvedValue({
+        reviewed: 3,
+        failed: 1,
+      })
+
+      const res = await request(createApp())
+        .post('/api/ai/proposals/review-batch')
+        .set('Cookie', AUTH_COOKIE)
+        .send({ action: 'accept', minConfidence: 0.9 })
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ reviewed: 3, failed: 1 })
+      expect(reviewPendingProposals).toHaveBeenCalledWith('user-1', {
+        action: 'accept',
+        minConfidence: 0.9,
+      })
+    })
+
+    it('returns 400 for a confidence above 1', async () => {
+      const res = await request(createApp())
+        .post('/api/ai/proposals/review-batch')
+        .set('Cookie', AUTH_COOKIE)
+        .send({ action: 'accept', minConfidence: 1.5 })
+
+      expect(res.status).toBe(400)
+      expect(reviewPendingProposals).not.toHaveBeenCalled()
     })
   })
 })

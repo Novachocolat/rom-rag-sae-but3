@@ -120,3 +120,21 @@ export function applyAcceptedIdentification(
     return tx.rom.update({ where: { id: romId }, data: romData })
   })
 }
+
+// IDs of a user's PENDING identification proposals at or above `minConfidence`, oldest first
+export async function listPendingProposalIds(
+  userId: string,
+  minConfidence: number,
+): Promise<string[]> {
+  const rows = await prisma.aiProposal.findMany({
+    where: {
+      kind: 'IDENTIFICATION',
+      status: 'PENDING',
+      confidence: { gte: minConfidence },
+      rom: { userId },
+    },
+    select: { id: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  return rows.map((row) => row.id)
+}

@@ -90,3 +90,15 @@ export const collectionGroupingSchema = z.object({
   confidence: z.number().min(0).max(1),
   reasoning: z.string(),
 })
+
+// Applies one review to every PENDING identification at or above `minConfidence`
+export const proposalBulkReviewSchema = z.object({
+  action: z.enum(['accept', 'reject']),
+  minConfidence: z.number().min(0).max(1),
+})
+
+// `failed` counts the proposals whose review was refused: they stay PENDING
+export const proposalBulkReviewResultSchema = z.object({
+  reviewed: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+})

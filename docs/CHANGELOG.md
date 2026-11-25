@@ -18,6 +18,28 @@ Please, follow these types of changes:
 _The changelog must only be updated at the end of the day or when a sprint is
 completed, **not at every single commit!**_
 
+## [Unreleased] - 2026-11-24
+
+### Added
+
+- `ROM_HOST_DIR` chooses the host folder mounted read-only on `/roms`, instead
+  of the fixed `./dataset/roms`
+- Import a `.dat` catalog from **Settings**, through
+  `POST /api/dat/upload?fileName=` (raw body, 50 MB at most)
+- Export the library or one collection as CSV or JSON, through
+  `GET /api/roms/export?format=csv|json[&collectionId=]`; the CSV starts with a
+  BOM for Excel and neutralizes cells a spreadsheet would run as formulas
+- Incremental scan: `incremental: true` on `POST /api/scans` (checked by default
+  on the scan page) only processes new or modified files
+- Bulk review: `POST /api/ai/proposals/review-batch` applies one review to every
+  pending proposal at or above `minConfidence`, and the review page gets an
+  "Accept all ≥ 90%" button
+- Bruno requests for the new routes
+
+### Changed
+
+- `importDatFile` delegates to `importDatContent`, shared with the upload route
+
 ## [Unreleased] - 2026-10-07
 
 ### Added

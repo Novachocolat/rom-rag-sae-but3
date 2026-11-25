@@ -24,7 +24,7 @@ export async function apiClient<T = unknown>(
   } catch {
     throw new ApiError(503, {
       code: 'SERVER_UNREACHABLE',
-      message: 'Impossible de contacter le serveur',
+      message: "Couldn't reach the server. Please retry after",
       requestId: 'unknown',
     })
   }
@@ -46,7 +46,7 @@ export async function apiClient<T = unknown>(
     // Fallback if the format can not be interpreted by the server
     throw new ApiError(response.status, {
       code: 'UNKNOWN_ERROR',
-      message: 'Une erreur inattendue est survenue sur le serveur',
+      message: 'An error occured from the server. Please retry after',
       details: body,
       requestId: 'unknown',
     })

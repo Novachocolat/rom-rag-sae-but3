@@ -1,0 +1,23 @@
+meta {
+  name: 05 start an incremental scan
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/scans
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "path": "",
+    "incremental": true
+  }
+}
+
+assert {
+  res.status: eq 202
+  res.body.jobId: isString
+}

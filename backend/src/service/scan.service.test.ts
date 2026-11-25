@@ -14,6 +14,7 @@ function makeEntry(relativePath: string): WalkEntry {
     absolutePath: path.join('/roms/nes', relativePath),
     relativePath,
     sizeBytes: 1024,
+    modifiedAt: new Date('2026-01-01T00:00:00Z'),
   }
 }
 
@@ -42,6 +43,7 @@ function makeDeps(
       update: vi.fn().mockResolvedValue(undefined),
       finish: vi.fn().mockResolvedValue(undefined),
     },
+    listKnownFiles: vi.fn().mockResolvedValue([]),
     ...overrides,
   }
 }
@@ -53,6 +55,7 @@ function makeOptions(overrides: Partial<ScanOptions> = {}): ScanOptions {
     rootRelativePath: 'nes',
     concurrency: 2,
     signal: new AbortController().signal,
+    incremental: false,
     ...overrides,
   }
 }
@@ -240,5 +243,52 @@ describe('ScanJob projections', () => {
       startedAt: job.startedAt,
       finishedAt: job.finishedAt,
     })
+  })
+})
+
+// Tests for the incremental mode, which skips the files unchanged since their last scan
+describe('runScan (incremental)', () => {
+  it('only processes new or modified files', async () => {
+    const scannedAt = new Date('2026-06-01T00:00:00Z')
+    const deps = makeDeps(
+      ['same.nes', 'resized.nes', 'touched.nes', 'new.nes'].map(makeEntry),
+      {
+        listKnownFiles: vi.fn().mockResolvedValue([
+          {
+            relativePath: 'nes/same.nes',
+            sizeBytes: 1024n,
+            lastScannedAt: scannedAt,
+          },
+          {
+            relativePath: 'nes/resized.nes',
+            sizeBytes: 2048n,
+            lastScannedAt: scannedAt,
+          },
+          {
+            relativePath: 'nes/touched.nes',
+            sizeBytes: 1024n,
+            lastScannedAt: new Date('2025-01-01T00:00:00Z'),
+          },
+        ]),
+      },
+    )
+
+    await runScan(deps, makeOptions({ incremental: true }))
+
+    expect(deps.reportProgress.init).toHaveBeenCalledWith(3)
+    const saved = vi
+      .mocked(deps.saveRom)
+      .mock.calls.map(([rom]) => rom.relativePath)
+    expect(saved.sort()).toEqual([
+      'nes/new.nes',
+      'nes/resized.nes',
+      'nes/touched.nes',
+    ])
+  })
+
+  it('never reads the known files in full mode', async () => {
+    const deps = makeDeps([makeEntry('a.nes')])
+    await runScan(deps, makeOptions())
+    expect(deps.listKnownFiles).not.toHaveBeenCalled()
   })
 })

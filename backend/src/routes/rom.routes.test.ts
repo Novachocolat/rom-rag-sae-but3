@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.js'
 import { redis } from '../lib/redis.js'
 import { env } from '../env.js'
-import { findRomDetail, listRoms } from '../storage/rom.storage.js'
+import {
+  findRomDetail,
+  listRoms,
+  listRomsForExport,
+} from '../storage/rom.storage.js'
 import { romDetailSchema } from '@repo/shared/schemas'
 
 // Mocks dependencies
@@ -13,7 +17,12 @@ vi.mock('../lib/redis.js', () => ({
 vi.mock('../storage/rom.storage.js', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('../storage/rom.storage.js')>()
-  return { ...original, listRoms: vi.fn(), findRomDetail: vi.fn() }
+  return {
+    ...original,
+    listRoms: vi.fn(),
+    findRomDetail: vi.fn(),
+    listRomsForExport: vi.fn(),
+  }
 })
 
 const get = vi.mocked(redis.get)
@@ -215,5 +224,54 @@ describe('GET /api/roms/:id', () => {
     expect(response.status).toBe(200)
     expect(response.body.datEntry).toBeNull()
     expect(response.body.identificationSource).toBe('UNIDENTIFIED')
+  })
+})
+
+describe('GET /api/roms/export', () => {
+  beforeEach(() => {
+    get.mockResolvedValue('user-1')
+    expire.mockResolvedValue(1)
+  })
+
+  it('downloads the whole library as CSV', async () => {
+    vi.mocked(listRomsForExport).mockResolvedValue([romRow] as never)
+
+    const res = await request(createApp())
+      .get('/api/roms/export?format=csv')
+      .set('Cookie', AUTH_COOKIE)
+
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toMatch(/^text\/csv/)
+    expect(res.headers['content-disposition']).toContain('library.csv')
+    expect(res.text).toContain('Game (Europe).nes')
+    expect(listRomsForExport).toHaveBeenCalledWith({ userId: 'user-1' })
+  })
+
+  it('downloads one collection as JSON', async () => {
+    vi.mocked(listRomsForExport).mockResolvedValue([romRow] as never)
+
+    const res = await request(createApp())
+      .get(`/api/roms/export?format=json&collectionId=${ROM_ID}`)
+      .set('Cookie', AUTH_COOKIE)
+
+    expect(res.status).toBe(200)
+    expect(res.headers['content-disposition']).toContain('collection.json')
+    expect(res.body[0]).toMatchObject({
+      fileName: 'Game (Europe).nes',
+      sizeBytes: 40976,
+    })
+    expect(listRomsForExport).toHaveBeenCalledWith({
+      userId: 'user-1',
+      collectionId: ROM_ID,
+    })
+  })
+
+  it('returns 400 for an unknown format', async () => {
+    const res = await request(createApp())
+      .get('/api/roms/export?format=xml')
+      .set('Cookie', AUTH_COOKIE)
+
+    expect(res.status).toBe(400)
+    expect(listRomsForExport).not.toHaveBeenCalled()
   })
 })

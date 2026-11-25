@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/app/components/ui/table'
 import { useCollection } from '@/app/hooks/collections/useCollection'
+import { ExportButtons } from '@/app/components/library/ExportButtons'
 
 // Variants of one game: the ROMs of a collection with their proposed label
 export function CollectionDetail({ collectionId }: { collectionId: string }) {
@@ -29,38 +30,43 @@ export function CollectionDetail({ collectionId }: { collectionId: string }) {
   )
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Variant</TableHead>
-          <TableHead>ROM</TableHead>
-          <TableHead>Region</TableHead>
-          <TableHead>Size</TableHead>
-          <TableHead>Source</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {members.map((member) => (
-          <TableRow key={member.romId}>
-            <TableCell>{member.variantLabel ?? '—'}</TableCell>
-            <TableCell>
-              <Link
-                to={`/roms/${member.romId}`}
-                className="font-medium underline-offset-4 hover:underline"
-              >
-                {member.fileName}
-              </Link>
-            </TableCell>
-            <TableCell>{member.region ?? '—'}</TableCell>
-            <TableCell>
-              {(member.sizeBytes / 1_000_000).toFixed(1)} Mb
-            </TableCell>
-            <TableCell>
-              <RomStatusBadge source={member.identificationSource} />
-            </TableCell>
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <ExportButtons collectionId={collectionId} />
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Variant</TableHead>
+            <TableHead>ROM</TableHead>
+            <TableHead>Region</TableHead>
+            <TableHead>Size</TableHead>
+            <TableHead>Source</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {members.map((member) => (
+            <TableRow key={member.romId}>
+              <TableCell>{member.variantLabel ?? '—'}</TableCell>
+              <TableCell>
+                <Link
+                  to={`/roms/${member.romId}`}
+                  className="font-medium underline-offset-4 hover:underline"
+                >
+                  {member.fileName}
+                </Link>
+              </TableCell>
+              <TableCell>{member.region ?? '—'}</TableCell>
+              <TableCell>
+                {(member.sizeBytes / 1_000_000).toFixed(1)} Mb
+              </TableCell>
+              <TableCell>
+                <RomStatusBadge source={member.identificationSource} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   )
 }

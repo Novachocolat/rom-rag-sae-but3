@@ -1,5 +1,10 @@
 import { romIdentificationSchema } from '@repo/shared/schemas'
-import type { ProposalCorrections, RomIdentification } from '@repo/shared/types'
+import type {
+  ProposalBulkReview,
+  ProposalBulkReviewResult,
+  ProposalCorrections,
+  RomIdentification,
+} from '@repo/shared/types'
 import { env } from '../env.js'
 import type { LlmClient } from '../client/ollama/ollama.types.js'
 import { AppError } from '../lib/error.js'
@@ -31,6 +36,7 @@ import {
   findPendingProposalForRom,
   getProposal,
   updateProposalStatus,
+  listPendingProposalIds,
   type ProposalStatus,
 } from '../storage/ai-proposal.storage.js'
 import { findRomById, listUnidentifiedRomIds } from '../storage/rom.storage.js'
@@ -475,6 +481,33 @@ export async function reviewProposal(
     confidence: proposal.confidence,
   })
   return { status: 'ACCEPTED' as const }
+}
+
+/**
+ * Applies the same review to every PENDING proposal of a user at or above
+ * `minConfidence`, one at a time. A refused review (e.g. an incoherent
+ * identification) is counted as failed and leaves its proposal PENDING.
+ */
+export async function reviewPendingProposals(
+  userId: string,
+  { action, minConfidence }: ProposalBulkReview,
+): Promise<ProposalBulkReviewResult> {
+  const proposalIds = await listPendingProposalIds(userId, minConfidence)
+  let reviewed = 0
+
+  for (const proposalId of proposalIds) {
+    try {
+      await reviewProposal(proposalId, userId, { action })
+      reviewed += 1
+    } catch (err) {
+      logger.warn('Bulk review skipped a proposal', {
+        proposalId,
+        reason: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  return { reviewed, failed: proposalIds.length - reviewed }
 }
 
 // Identifies every UNIDENTIFIED ROM of a user, one at a time to respect Ollama.

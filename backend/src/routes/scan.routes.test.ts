@@ -30,6 +30,7 @@ import {
   listScanJobs,
   markScanJobRunning,
 } from '../storage/scan-job.storage.js'
+import { listKnownRomFiles } from '../storage/rom.storage.js'
 
 vi.mock('../lib/redis.js', () => ({
   redis: { get: vi.fn(), expire: vi.fn() },
@@ -71,6 +72,10 @@ vi.mock('../storage/scan-job.storage.js', () => ({
   finishScanJob: vi.fn(),
   findScanJob: vi.fn(),
   listScanJobs: vi.fn(),
+}))
+vi.mock('../storage/rom.storage.js', () => ({
+  upsertRom: vi.fn(),
+  listKnownRomFiles: vi.fn(),
 }))
 
 const AUTH_COOKIE = `${env.SESSION_COOKIE_NAME}=tok123`
@@ -181,7 +186,23 @@ describe('scan.routes', () => {
         rootRelativePath: 'nes',
         concurrency: env.SCAN_CONCURRENCY,
         signal: expect.any(AbortSignal),
+        incremental: false,
       })
+    })
+
+    it('forwards `incremental` to runScan', async () => {
+      vi.mocked(isLibraryDirectory).mockResolvedValue(true)
+      vi.mocked(createScanJob).mockResolvedValue(scanJobRow)
+      await request(createApp())
+        .post('/api/scans')
+        .set('Cookie', AUTH_COOKIE)
+        .send({ path: 'nes', incremental: true })
+
+      await vi.mocked(startJob).mock.lastCall?.[0](new AbortController().signal)
+      expect(runScan).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({ incremental: true }),
+      )
     })
   })
 
@@ -192,6 +213,7 @@ describe('scan.routes', () => {
         absolutePath: '/roms/nes/a.nes',
         relativePath: 'a.nes',
         sizeBytes: 1,
+        modifiedAt: new Date('2026-01-01T00:00:00Z'),
       }
       vi.mocked(walkDirectory).mockImplementation(async function* () {
         yield entry
@@ -271,6 +293,7 @@ describe('scan.routes', () => {
         absolutePath: '/roms/nes/a.nes',
         relativePath: 'a.nes',
         sizeBytes: 1,
+        modifiedAt: new Date('2026-01-01T00:00:00Z'),
       }
 
       await expect(deps.detectPlatform(entry)).resolves.toBe('platform-nes')
@@ -304,6 +327,13 @@ describe('scan.routes', () => {
         counters,
         null,
       )
+    })
+
+    it('listKnownFiles reads the ROMs of the user', async () => {
+      const deps = await startScanAndGetDeps()
+      vi.mocked(listKnownRomFiles).mockResolvedValue([])
+      await deps.listKnownFiles()
+      expect(listKnownRomFiles).toHaveBeenCalledWith('user-1')
     })
   })
 

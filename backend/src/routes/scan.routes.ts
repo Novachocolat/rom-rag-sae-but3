@@ -45,7 +45,7 @@ import {
   walkDirectory,
   type WalkEntry,
 } from '../storage/filesystem.storage.js'
-import { upsertRom } from '../storage/rom.storage.js'
+import { listKnownRomFiles, upsertRom } from '../storage/rom.storage.js'
 import {
   createScanJob,
   findScanJob,
@@ -137,6 +137,8 @@ function buildScanDependencies(
         await finishScanJob(jobId, status, counters, errorMessage)
       },
     },
+    // Only read by an incremental scan, to skip the files unchanged since their last scan
+    listKnownFiles: () => listKnownRomFiles(userId),
   }
 }
 
@@ -152,7 +154,7 @@ function buildScanDependencies(
  *       content:
  *         application/json:
  *           schema: { $ref: '#/components/schemas/ScanRequest' }
- *           example: { path: '' }
+ *           example: { path: '', incremental: true }
  *     responses:
  *       202:
  *         description: Scan started, follow it with GET /scans/{id}
@@ -174,7 +176,7 @@ scanRouter.post(
   async (req, res, next) => {
     try {
       const userId = res.locals.userId as string
-      const { path: requestedPath } = req.body as ScanRequest
+      const { path: requestedPath, incremental } = req.body as ScanRequest
 
       if (!(await isLibraryDirectory(requestedPath))) {
         next(
@@ -201,6 +203,7 @@ scanRouter.post(
             rootRelativePath,
             concurrency: env.SCAN_CONCURRENCY,
             signal,
+            incremental,
           }),
         job.id,
       )

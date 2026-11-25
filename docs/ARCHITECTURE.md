@@ -172,7 +172,10 @@ The pieces, from the HTTP layer down:
 - **`service/scan.service.ts`** (`runScan`) is pure orchestration: it receives
   every I/O as a dependency, processes at most `SCAN_CONCURRENCY` files at a
   time with a small semaphore, counts a failing file as an error without
-  stopping, and skips the remaining files once aborted.
+  stopping, and skips the remaining files once aborted. With
+  `incremental: true`, it first drops the files whose ROM is already stored at
+  the same path with the same size and a `lastScannedAt` newer than the file's
+  modification time, so `totalFiles` only counts new or modified files.
 - **`service/identification.service.ts`** applies the six-step cascade and keeps
   the progress in memory, flushing it to Redis every 25 files or 500 ms.
 
@@ -186,7 +189,7 @@ sequenceDiagram
     participant R as Redis (scan:jobId)
     participant DB as PostgreSQL (ScanJob, Rom)
 
-    U->>API: POST /api/scans { path }
+    U->>API: POST /api/scans { path, incremental }
     API->>DB: insert ScanJob (PENDING)
     API-->>U: 202 { jobId }
     API->>Job: startJob (fire-and-forget)

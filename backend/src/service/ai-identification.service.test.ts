@@ -16,6 +16,7 @@ import {
   createProposal,
   findPendingProposalForRom,
   getProposal,
+  listPendingProposalIds,
   updateProposalStatus,
 } from '../storage/ai-proposal.storage.js'
 import {
@@ -41,6 +42,7 @@ import {
   type IdentificationPorts,
   type PlatformInfo,
   type RomForIdentification,
+  reviewPendingProposals,
 } from './ai-identification.service.js'
 
 vi.mock('../lib/prisma.js', () => ({ prisma: { $transaction: vi.fn() } }))
@@ -65,6 +67,7 @@ vi.mock('../storage/ai-proposal.storage.js', () => ({
   createProposal: vi.fn(),
   findPendingProposalForRom: vi.fn(),
   getProposal: vi.fn(),
+  listPendingProposalIds: vi.fn(),
   updateProposalStatus: vi.fn(),
 }))
 vi.mock('../storage/dat.storage.js', () => ({
@@ -747,5 +750,35 @@ describe('identifyUnidentifiedRoms', () => {
 
     expect(result.attempted).toBe(0)
     expect(findRomById).not.toHaveBeenCalled()
+  })
+})
+
+describe('reviewPendingProposals', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('reviews every listed proposal and counts the refused ones', async () => {
+    vi.mocked(listPendingProposalIds).mockResolvedValue(['prop-1', 'prop-2'])
+    vi.mocked(getProposal)
+      .mockResolvedValueOnce({
+        id: 'prop-1',
+        status: 'PENDING',
+        rom: { id: 'rom-1', userId: 'user-1', fileName: 'Tetris (World).gb' },
+      } as never)
+      .mockResolvedValueOnce(null) // prop-2 vanished: 404, counted as failed
+
+    const result = await reviewPendingProposals('user-1', {
+      action: 'reject',
+      minConfidence: 0.9,
+    })
+
+    expect(result).toEqual({ reviewed: 1, failed: 1 })
+    expect(listPendingProposalIds).toHaveBeenCalledWith('user-1', 0.9)
+    expect(updateProposalStatus).toHaveBeenCalledWith(
+      'prop-1',
+      'REJECTED',
+      'user-1',
+    )
   })
 })

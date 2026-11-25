@@ -5,6 +5,7 @@ import { Button } from '@/app/components/ui/button'
 import { ScanProgress } from '@/app/components/scan/ScanProgress'
 import { useStartScan } from '@/app/hooks/scan/useStartScan'
 import { useScanProgress } from '@/app/hooks/scan/useScanProgress'
+import { Label } from '@/app/components/ui/label'
 
 // React Query function to browse an user's ROM library
 function useBrowse(path: string) {
@@ -24,6 +25,7 @@ export function ScanPage() {
   const browse = useBrowse(path)
   const startScan = useStartScan()
   const progress = useScanProgress(jobId)
+  const [incremental, setIncremental] = useState(true)
 
   function enterDirectory(dir: string) {
     setPath((current) => (current ? `${current}/${dir}` : dir))
@@ -54,11 +56,21 @@ export function ScanPage() {
         ))}
       </div>
 
+      <Label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="size-4 accent-primary"
+          checked={incremental}
+          onChange={(event) => setIncremental(event.target.checked)}
+        />
+        Only new or modified files
+      </Label>
+
       <Button
         disabled={startScan.isPending || progress.data?.status === 'RUNNING'}
         onClick={() =>
           startScan.mutate(
-            { path },
+            { path, incremental },
             { onSuccess: ({ jobId }) => setJobId(jobId) },
           )
         }

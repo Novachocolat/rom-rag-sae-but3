@@ -3,12 +3,14 @@ import {
   aiProposalListQuerySchema,
   proposalReviewSchema,
   romIdentificationSchema,
+  proposalBulkReviewSchema,
 } from '@repo/shared/schemas'
 import type {
   AiProposal,
   AiProposalListQuery,
   Paginated,
   ProposalReview,
+  ProposalBulkReview,
 } from '@repo/shared/types'
 import { Router } from 'express'
 import { z } from 'zod'
@@ -19,6 +21,7 @@ import {
   identifyStoredRom,
   identifyUnidentifiedRoms,
   reviewProposal,
+  reviewPendingProposals,
 } from '../service/ai-identification.service.js'
 import {
   backfillEmbeddings,
@@ -326,3 +329,44 @@ aiRouter.get('/ai/embeddings/status', requireAuth, async (_req, res, next) => {
     next(err)
   }
 })
+
+/**
+ * @openapi
+ * /ai/proposals/review-batch:
+ *   post:
+ *     tags: [AI]
+ *     summary: Accepts or rejects every pending proposal at or above a confidence
+ *     security: [{ sessionCookie: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/ProposalBulkReviewRequest' }
+ *           example: { action: accept, minConfidence: 0.9 }
+ *     responses:
+ *       200:
+ *         description: How many proposals were reviewed, and how many were refused
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ProposalBulkReviewResult' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
+// POST /api/ai/proposals/review-batch: one review for every pending proposal at or above a confidence
+aiRouter.post(
+  '/ai/proposals/review-batch',
+  requireAuth,
+  validate({ body: proposalBulkReviewSchema }),
+  async (req, res, next) => {
+    try {
+      const userId = res.locals.userId as string
+      const result = await reviewPendingProposals(
+        userId,
+        req.body as ProposalBulkReview,
+      )
+      res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  },
+)

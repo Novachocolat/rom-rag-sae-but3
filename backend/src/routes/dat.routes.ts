@@ -1,8 +1,11 @@
-import { Router } from 'express'
+import path from 'node:path'
+import express, { Router } from 'express'
 import { z } from 'zod'
+import { AppError } from '../lib/error.js'
 import { validate } from '../middleware/validate.middleware.js'
 import {
   importDatFile,
+  importDatContent,
   getDatCatalog,
   listPlatformsCatalog,
   deleteDatFile,
@@ -15,6 +18,10 @@ const importBodySchema = z.object({
 
 const idParamsSchema = z.object({
   id: z.uuid('Invalid ID'),
+})
+
+const uploadQuerySchema = z.object({
+  fileName: z.string().min(1, 'File name is required'),
 })
 
 export const datRouter = Router()
@@ -81,6 +88,55 @@ datRouter.post(
   async (req, res) => {
     const { fileName } = req.body as z.infer<typeof importBodySchema>
     const result = await importDatFile(fileName)
+    res.status(201).json(result)
+  },
+)
+
+/**
+ * @openapi
+ * /dat/upload:
+ *   post:
+ *     tags: [DAT]
+ *     summary: Imports a .dat catalog sent as the raw request body
+ *     parameters:
+ *       - in: query
+ *         name: fileName
+ *         required: true
+ *         description: Name the catalog is recorded under
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/octet-stream:
+ *           schema: { type: string, format: binary }
+ *     responses:
+ *       201:
+ *         description: Catalog imported with its entries
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/DatImportResult' }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       409:
+ *         description: The same catalog content is already imported (DAT_ALREADY_IMPORTED)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ApiError' }
+ */
+// POST /api/dat/upload?fileName=: imports a catalog picked from the user's disk
+// The global express.json() skips this body, so it is read raw here
+datRouter.post(
+  '/dat/upload',
+  express.raw({ type: 'application/octet-stream', limit: '50mb' }),
+  validate({ query: uploadQuerySchema }),
+  async (req, res) => {
+    const { fileName } = req.query as unknown as z.infer<
+      typeof uploadQuerySchema
+    >
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      throw AppError.badRequest('EMPTY_FILE', 'The uploaded file is empty')
+    }
+
+    const result = await importDatContent(path.basename(fileName), req.body)
     res.status(201).json(result)
   },
 )

@@ -14,6 +14,7 @@ import { ConfidenceBadge } from '@/app/components/library/ConfidenceBadge'
 import { RomStatusBadge } from '@/app/components/library/RomStatusBadge'
 import { LibraryFilters } from '@/app/components/library/LibraryFilters'
 import { useLibraryRoms } from '@/app/hooks/library/useLibraryRoms'
+import { ExportButtons } from '@/app/components/library/ExportButtons'
 
 // Page for users to consult their library
 export function LibraryPage() {
@@ -24,6 +25,10 @@ export function LibraryPage() {
   return (
     <div className="space-y-4">
       <LibraryFilters />
+
+      <div className="flex justify-end">
+        <ExportButtons />
+      </div>
 
       <Table>
         <TableHeader>

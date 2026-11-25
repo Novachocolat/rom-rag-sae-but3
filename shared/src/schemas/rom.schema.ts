@@ -76,3 +76,9 @@ export const romDetailSchema = romSummarySchema.extend({
   summary: z.string().nullable(),
   datEntry: romDatEntrySchema.nullable(),
 })
+
+// Validates and parses an export query: the whole library, or one collection with `collectionId`
+export const romExportQuerySchema = z.object({
+  format: z.enum(['csv', 'json']).default('csv'),
+  collectionId: z.uuid().optional(),
+})

@@ -13,6 +13,7 @@ export interface WalkEntry {
   absolutePath: string
   relativePath: string
   sizeBytes: number
+  modifiedAt: Date
 }
 
 export interface FileHashes {
@@ -76,7 +77,7 @@ export async function isLibraryDirectory(
   }
 }
 
-/** Reads the first `length` bytes of a file (fewer if it is shorter), for magic-byte checks. */
+// Reads the first `length` bytes of a file (fewer if it is shorter), for magic-byte checks.
 export async function readFileHead(
   absolutePath: string,
   length = 512,
@@ -137,6 +138,7 @@ export async function* walkDirectory(
           .split(path.sep)
           .join('/'),
         sizeBytes: stats.size,
+        modifiedAt: stats.mtime,
       }
     }
   }
@@ -230,7 +232,7 @@ export function hashFile(absolutePath: string): Promise<FileHashes> {
   })
 }
 
-/** Lists the immediate subdirectories of `relativePath`, for the frontend's folder browser. */
+// Lists the immediate subdirectories of `relativePath`, for the frontend's folder browser.
 export async function listSubdirectories(
   relativePath: string,
 ): Promise<string[]> {

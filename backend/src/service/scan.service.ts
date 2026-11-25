@@ -5,7 +5,7 @@ import type {
   ScanStatus,
 } from '@repo/shared/types'
 import type { FileHashes, WalkEntry } from '../storage/filesystem.storage.js'
-import type { UpsertRomInput } from '../storage/rom.storage.js'
+import type { KnownRomFile, UpsertRomInput } from '../storage/rom.storage.js'
 import {
   identifyRom,
   type DatLookup,
@@ -23,6 +23,7 @@ export interface ScanDependencies {
   detectPlatform: (entry: WalkEntry) => Promise<string | null>
   saveRom: (rom: UpsertRomInput) => Promise<unknown>
   reportProgress: ScanProgressReporter
+  listKnownFiles: () => Promise<KnownRomFile[]>
 }
 
 export interface ScanProgressReporter {
@@ -41,6 +42,7 @@ export interface ScanOptions {
   rootRelativePath: string // Prefix of every stored `relativePath`
   concurrency: number
   signal: AbortSignal
+  incremental: boolean
 }
 
 interface ScanJobRecord {
@@ -86,9 +88,23 @@ export async function runScan(
   deps: ScanDependencies,
   options: ScanOptions,
 ): Promise<FinalScanStatus> {
-  const { walk, hash, lookup, detectPlatform, saveRom, reportProgress } = deps
-  const { userId, absoluteRoot, rootRelativePath, concurrency, signal } =
-    options
+  const {
+    walk,
+    hash,
+    lookup,
+    detectPlatform,
+    saveRom,
+    reportProgress,
+    listKnownFiles,
+  } = deps
+  const {
+    userId,
+    absoluteRoot,
+    rootRelativePath,
+    concurrency,
+    signal,
+    incremental,
+  } = options
 
   const counters: ScanCounters = {
     processedFiles: 0,
@@ -158,8 +174,29 @@ export async function runScan(
     await reportProgress.update({ ...counters })
   }
 
+  // A file is unchanged when a ROM already sits at its path with the same size
+  // and was saved after the file was last modified
+  async function keepChangedEntries(
+    entries: WalkEntry[],
+  ): Promise<WalkEntry[]> {
+    const known = new Map(
+      (await listKnownFiles()).map((rom) => [rom.relativePath, rom]),
+    )
+    return entries.filter((entry) => {
+      const rom = known.get(
+        path.posix.join(rootRelativePath, entry.relativePath),
+      )
+      return (
+        !rom ||
+        rom.sizeBytes !== BigInt(entry.sizeBytes) ||
+        entry.modifiedAt > rom.lastScannedAt
+      )
+    })
+  }
+
   try {
-    const entries = await walk(absoluteRoot)
+    const walked = await walk(absoluteRoot)
+    const entries = incremental ? await keepChangedEntries(walked) : walked
     await reportProgress.init(entries.length)
 
     const limit = createSemaphore(concurrency)

@@ -117,6 +117,11 @@ database. All four Node services share the same image (`Dockerfile.dev`).
 `./dataset/roms` is mounted **read-only** on `/roms` (`ROM_LIBRARY_ROOT`), so
 the application can never modify or delete a ROM.
 
+**Your own ROM folder.** Set `ROM_HOST_DIR` in `.env` to the folder of your
+machine to scan (e.g. `ROM_HOST_DIR=D:/Games/ROMs`, forward slashes on Windows
+too), then run `docker compose up -d backend` to recreate the container. Keep
+`ROM_LIBRARY_ROOT=/roms`: it is the path inside the container.
+
 The production stack (`docker-compose.prod.yml` / `npm run docker:prod`) is
 **not implemented yet** (both the file and `.env.prod` are still empty),
 reported to a future sprint. Use `npm run docker:dev` until then; there will be
@@ -140,6 +145,10 @@ powershell -ExecutionPolicy Bypass -File scripts\import-dat.ps1   # Windows
 The script checks that Docker is running and that the backend answers, then
 imports every `.dat` file not imported yet (safe to replay). On Windows, you can
 also right-click `scripts/import-dat.ps1` > **Run with PowerShell**.
+
+**From the interface.** **Settings** > **DAT catalogs** imports one `.dat` file
+picked from your disk (any folder, 50 MB at most), without copying it into
+`dataset/dat/`.
 
 **Replacing a catalog.** By default, a `.dat` file whose name is already
 imported is skipped, and so is a file whose content is already imported under

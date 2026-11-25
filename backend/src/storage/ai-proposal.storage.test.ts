@@ -6,6 +6,7 @@ import {
   createProposal,
   findPendingProposalForRom,
   getProposal,
+  listPendingProposalIds,
   listProposals,
   updateProposalStatus,
 } from './ai-proposal.storage.js'
@@ -181,6 +182,26 @@ describe('ai-proposal.storage', () => {
     expect(tx.rom.update).toHaveBeenCalledWith({
       where: { id: 'rom-1' },
       data: { title: 'Tetris', identificationSource: 'USER_CONFIRMED' },
+    })
+  })
+
+  it('listPendingProposalIds lists the pending identifications at or above a confidence', async () => {
+    vi.mocked(prisma.aiProposal.findMany).mockResolvedValue([
+      { id: 'p-1' },
+    ] as never)
+
+    await expect(listPendingProposalIds('user-1', 0.9)).resolves.toEqual([
+      'p-1',
+    ])
+    expect(prisma.aiProposal.findMany).toHaveBeenCalledWith({
+      where: {
+        kind: 'IDENTIFICATION',
+        status: 'PENDING',
+        confidence: { gte: 0.9 },
+        rom: { userId: 'user-1' },
+      },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
     })
   })
 })

@@ -153,6 +153,7 @@ const components: Record<string, z.ZodType> = {
   ProposalReviewRequest: proposalReviewSchema,
   ProposalReviewResult: proposalReviewResultSchema,
   EmbeddingStatus: embeddingStatusSchema,
+  // Body and answer of POST /api/ai/proposals/review-batch
   ProposalBulkReviewRequest: proposalBulkReviewSchema,
   ProposalBulkReviewResult: proposalBulkReviewResultSchema,
   // Collections

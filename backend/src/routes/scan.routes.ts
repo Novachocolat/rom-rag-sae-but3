@@ -137,6 +137,7 @@ function buildScanDependencies(
         await finishScanJob(jobId, status, counters, errorMessage)
       },
     },
+    // Only read by an incremental scan, to skip the files unchanged since their last scan
     listKnownFiles: () => listKnownRomFiles(userId),
   }
 }
@@ -153,7 +154,7 @@ function buildScanDependencies(
  *       content:
  *         application/json:
  *           schema: { $ref: '#/components/schemas/ScanRequest' }
- *           example: { path: '' }
+ *           example: { path: '', incremental: true }
  *     responses:
  *       202:
  *         description: Scan started, follow it with GET /scans/{id}

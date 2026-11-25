@@ -30,6 +30,10 @@ import {
 } from '@/app/store/slices/review.slice'
 import { useAppDispatch, useAppSelector } from '@/app/store/store-hooks'
 import { ApiError } from '@/lib/api-error'
+import { useBulkReviewProposals } from '@/app/hooks/ai/useBulkReviewProposals'
+
+// Proposals at or above this confidence can be accepted in one go
+const HIGH_CONFIDENCE = 0.9
 
 type ReviewAction = 'accept' | 'reject'
 
@@ -129,6 +133,19 @@ export function ReviewPage() {
   const currentExcluded = currentGrouping
     ? (excludedRomIds[currentGrouping.collection.id] ?? [])
     : []
+
+  const bulkReview = useBulkReviewProposals()
+
+  function acceptHighConfidence() {
+    bulkReview
+      .mutateAsync({ action: 'accept', minConfidence: HIGH_CONFIDENCE })
+      .then(({ reviewed, failed }) =>
+        toast.success(
+          `Accepted ${reviewed} proposal(s)${failed > 0 ? `, ${failed} left to review by hand` : ''}`,
+        ),
+      )
+      .catch((error: unknown) => toast.error(errorMessage(error)))
+  }
 
   function markHandled(id: string, value: boolean) {
     setHandled((previous) => {
@@ -241,11 +258,22 @@ export function ReviewPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Review</h1>
-        <p className="text-sm text-muted-foreground">
-          Everything the AI proposes waits here until you decide.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Review</h1>
+          <p className="text-sm text-muted-foreground">
+            Everything the AI proposes waits here until you decide.
+          </p>
+        </div>
+        {tab === 'identifications' && identifications.length > 0 && (
+          <Button
+            variant="outline"
+            disabled={bulkReview.isPending}
+            onClick={acceptHighConfidence}
+          >
+            Accept all ≥ {HIGH_CONFIDENCE * 100}%
+          </Button>
+        )}
       </div>
 
       <Tabs
